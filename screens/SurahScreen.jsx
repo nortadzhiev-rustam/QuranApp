@@ -9,14 +9,27 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Animated,
+  I18nManager,
 } from "react-native";
 import axios from "axios";
 import { useFonts } from "expo-font";
 import { PanGestureHandler } from "react-native-gesture-handler";
 import Icon from "react-native-vector-icons/FontAwesome6";
 import Modal from "react-native-modal";
+I18nManager.allowRTL(true);
 
 const { width, height } = Dimensions.get("window");
+
+const calculateFontSize = (screenWidth) => {
+  const multiplier = 0.0664;
+  const baseSize = 26;
+  const lineHeightMultiplier = 1.5;
+
+  const fontSize = Math.max(baseSize, screenWidth * multiplier);
+  const lineHeight = fontSize * lineHeightMultiplier;
+
+  return { fontSize, lineHeight };
+};
 
 const SurahScreen = ({ route, navigation }) => {
   const { initialPage, nameArabic, hasBismillah } = route.params;
@@ -34,6 +47,8 @@ const SurahScreen = ({ route, navigation }) => {
     "uthmani-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
     "surah-name": require("../assets/fonts/quran/surah_name/sura_names.ttf"),
   });
+
+  
 
   useEffect(() => {
     const fetchPage = async () => {
@@ -112,6 +127,8 @@ const SurahScreen = ({ route, navigation }) => {
     );
   }
 
+  const { fontSize, lineHeight } = calculateFontSize(width);
+
   return (
     <TouchableWithoutFeedback onPress={handleScreenTap}>
       <View style={{ flex: 1 }}>
@@ -136,29 +153,39 @@ const SurahScreen = ({ route, navigation }) => {
               style={{
                 alignItems: "flex-start",
                 height: 100,
-                
+
                 justifyContent: "flex-end",
                 paddingBottom: 15,
               }}
             >
               <Text style={{ fontSize: 18 }}>Al Quran-ul Kareem</Text>
             </View>
-            <View style={{flex: 1}}></View>
+            <View style={{ flex: 1 }}></View>
           </Animated.View>
         )}
         <PanGestureHandler onGestureEvent={onGestureEvent}>
           <ScrollView contentContainerStyle={styles.container}>
-            {/* Conditionally render Bismillah */}
-            {currentPage === initialPage && hasBismillah && (
-              <Text style={styles.bismillah}>
-                بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
-              </Text>
-            )}
-
             <View style={styles.verseContainer}>
-              <Text style={styles.verseText}>
+              <Text
+                style={[
+                  styles.verseText,
+                  { fontSize: fontSize, lineHeight: lineHeight },
+                ]}
+              >
                 {pageData.map((verse) => (
                   <Text key={verse.id}>
+                    {/* Conditionally render Bismillah */}
+                    {currentPage === initialPage &&
+                      hasBismillah &&
+                      verse.verse_number === 1 && (
+                        <Text
+                          style={[styles.bismillah, { fontSize, lineHeight }]}
+                        >
+                          {"\n"}
+                          بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+                          {"\n"}
+                        </Text>
+                      )}
                     {verse.text_imlaei}{" "}
                     {convertToArabicNumerals(verse.verse_number)}{" "}
                   </Text>
@@ -215,7 +242,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9F6EF",
-    paddingTop: 10,
+    paddingTop: 25,
     paddingBottom: 10,
     paddingHorizontal: 5,
     alignItems: "center",
@@ -225,7 +252,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: "uthmani-font",
     textAlign: "center",
-    marginVertical: 5,
+    marginBottom: 50,
     color: "#333",
   },
   surahName: {
@@ -239,18 +266,17 @@ const styles = StyleSheet.create({
     width: width * 0.9,
   },
   verseText: {
-    marginTop: 5,
-    fontSize: 26.2,
+    marginTop: 10,
     fontFamily: "uthmani-font",
     color: "#333",
-    lineHeight: 35,
     flexWrap: "wrap",
+    writingDirection: "rtl",
     textAlign: "justify",
   },
   pageNumber: {
     position: "absolute",
     bottom: 20, // Adjusted to accommodate the navigation bar
-    fontSize: 18,
+    fontSize: 13,
     color: "#666",
     textAlign: "center",
     width: "100%",
@@ -269,7 +295,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: height-60,
+    top: height - 60,
     height: 60,
     backgroundColor: "#fff",
     flexDirection: "row",
