@@ -1,21 +1,22 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, memo, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
-  ScrollView,
   Dimensions,
+  FlatList,
+  Switch,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  Animated,
-  I18nManager,
 } from "react-native";
 import axios from "axios";
-import { useFonts } from "expo-font";
-import { PanGestureHandler } from "react-native-gesture-handler";
 import Icon from "react-native-vector-icons/FontAwesome6";
 import Modal from "react-native-modal";
+import RenderHTML from "react-native-render-html";
+import { I18nManager } from "react-native";
+import { Picker } from "@react-native-picker/picker";
+
+// Allow RTL for Quranic text
 I18nManager.allowRTL(true);
 
 const { width, height } = Dimensions.get("window");
@@ -30,88 +31,125 @@ const calculateFontSize = (screenWidth) => {
 
   return { fontSize, lineHeight };
 };
+// Utility to convert numbers to Arabic numerals
+const convertToArabicNumerals = (number) => {
+  const arabicNumerals = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  return number
+    .toString()
+    .split("")
+    .map((digit) => arabicNumerals[parseInt(digit)])
+    .join("");
+};
+
+// Memoized verse item to prevent unnecessary re-renders
+const VerseItem = memo(({ item, fontSize, lineHeight, isEnabled }) => {
+  const source = {
+    html: `<span>${
+      item.translations[0]?.text || "No translation available"
+    }</span>`,
+  };
+
+  return (
+    <View style={styles.verseContainer}>
+      <Text style={[styles.verseText, { fontSize, lineHeight }]}>
+        {item.text_imlaei} {convertToArabicNumerals(item.verse_number)}
+      </Text>
+
+      <RenderHTML
+        contentWidth={Dimensions.get("window").width}
+        source={source}
+        tagsStyles={{ p: { color: "#555", fontSize: 16 } }}
+      />
+    </View>
+  );
+});
 
 const SurahScreen = ({ route, navigation }) => {
-  const { initialPage, nameArabic, hasBismillah } = route.params;
-  const [currentPage, setCurrentPage] = useState(initialPage);
-  const [pageData, setPageData] = useState([]);
+  const { surahNumber, hasBismillah, verseCount, surahName } = route.params;
+  const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isModalVisible, setModalVisible] = useState(false); // State for modal visibility
-  const [isNavVisible, setNavVisible] = useState(false); // State for navigation bar visibility
+  const [currentPage, setCurrentPage] = useState(1); // Track current page for pagination
+  const [loadingMore, setLoadingMore] = useState(false); // Handle loading more verses
+  const [isEnabled, setIsEnabled] = useState(false); // State for the switch
+  const [isModalVisible, setModalVisible] = useState(false); // Modal visibility
+  const [selectedValue, setSelectedValue] = useState("java");
+  // Toggle switch state
+  const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
 
-  const bottomNavAnim = useRef(new Animated.Value(height)).current; // Initial position is offscreen
-  const topNavAnim = useRef(new Animated.Value(0)).current; // Initial position is visible (if needed)
-
-  const [fontsLoaded] = useFonts({
-    "uthmani-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
-    "surah-name": require("../assets/fonts/quran/surah_name/sura_names.ttf"),
-  });
-
-  
-
+  // Set navigation options (header title and Switch)
   useEffect(() => {
-    const fetchPage = async () => {
+    navigation.setOptions({
+      title: surahName,
+      headerRight: () => (
+        <TouchableOpacity style={{ marginRight: 10 }} onPress={toggleSwitch}>
+          {isEnabled ? (
+            <Icon name='chevron-up' color='black' size={20} />
+          ) : (
+            <Icon name='chevron-down' color='black' size={20} />
+          )}
+        </TouchableOpacity>
+      ),
+    });
+  }, [surahName, isEnabled, navigation]);
+
+  // Fetch surah data (with pagination)
+  const fetchSurah = useCallback(
+    async (page) => {
+      setLoadingMore(true);
       try {
-        setLoading(true);
         const response = await axios.get(
-          `https://api.quran.com/api/v4/verses/by_page/${currentPage}?fields=text_imlaei,chapter_id`
+          `https://api.quran.com/api/v4/verses/by_chapter/${surahNumber}?page=${page}&fields=text_imlaei,chapter_id&translations=131&per_page=${verseCount}`
         );
-        setPageData(response.data.verses);
+        let fetchedVerses = response.data.verses;
+
+        if (
+          page === 1 &&
+          surahNumber !== 9 &&
+          surahNumber !== 1 &&
+          hasBismillah
+        ) {
+          const bismillahItem = {
+            id: "bismillah",
+            text_imlaei: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ",
+            verse_number: "", // No verse number for Bismillah
+            translations: [
+              {
+                text: "In the name of Allah, the Most Gracious, the Most Merciful",
+              },
+            ],
+          };
+          fetchedVerses = [bismillahItem, ...fetchedVerses];
+        }
+
+        setVerses((prevVerses) => [...prevVerses, ...fetchedVerses]);
         setLoading(false);
       } catch (err) {
         setError(err.message || "An error occurred");
         setLoading(false);
+      } finally {
+        setLoadingMore(false);
       }
-    };
+    },
+    [surahNumber, hasBismillah, verseCount]
+  );
 
-    fetchPage();
-  }, [currentPage]);
+  useEffect(() => {
+    fetchSurah(currentPage); // Fetch first page of verses when the component mounts
+  }, [currentPage, fetchSurah]);
 
-  const onGestureEvent = (event) => {
-    const { translationX } = event.nativeEvent;
-    if (translationX > 50 && currentPage < 604) {
+  // Load more verses when the user reaches the end of the list
+  const loadMoreVerses = () => {
+    if (!loadingMore) {
       setCurrentPage((prevPage) => prevPage + 1);
-    } else if (translationX < -50 && currentPage > 1) {
-      setCurrentPage((prevPage) => prevPage - 1);
     }
   };
 
+  // Toggle modal visibility
   const toggleModal = () => setModalVisible(!isModalVisible);
 
-  const handleScreenTap = () => {
-    setNavVisible(!isNavVisible);
-
-    if (isNavVisible) {
-      // Hide navigation bars
-      Animated.timing(bottomNavAnim, {
-        toValue: height, // Slide down the bottom bar
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-
-      Animated.timing(topNavAnim, {
-        toValue: -100, // Slide up the custom top header (adjust height accordingly)
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      // Show navigation bars
-      Animated.timing(bottomNavAnim, {
-        toValue: height - 60, // Slide up the bottom bar
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-
-      Animated.timing(topNavAnim, {
-        toValue: 0, // Slide down the custom top header
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  };
-
-  if (loading) {
+  // Render loading state
+  if (loading && currentPage === 1) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size='large' />
@@ -119,6 +157,7 @@ const SurahScreen = ({ route, navigation }) => {
     );
   }
 
+  // Render error state
   if (error) {
     return (
       <View style={styles.errorContainer}>
@@ -130,95 +169,46 @@ const SurahScreen = ({ route, navigation }) => {
   const { fontSize, lineHeight } = calculateFontSize(width);
 
   return (
-    <TouchableWithoutFeedback onPress={handleScreenTap}>
+    <View style={{ flex: 1 }}>
+      {isEnabled && (
+        <View style={{ flex: 1, height: 2, backgroundColor: "white" }}></View>
+      )}
       <View style={{ flex: 1 }}>
-        {isNavVisible && (
-          <Animated.View style={[styles.topNavigation, { top: topNavAnim }]}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                height: 100,
-              }}
-              onPress={() => navigation.navigate("Home")}
-            >
-              <Icon
-                name='chevron-left'
-                style={{ marginTop: 50, marginLeft: 30 }}
-                size={18}
-              />
-            </TouchableOpacity>
-            <View
-              style={{
-                alignItems: "flex-start",
-                height: 100,
+        <FlatList
+          data={verses}
+          renderItem={({ item }) => (
+            <VerseItem
+              item={item}
+              fontSize={fontSize}
+              lineHeight={lineHeight}
+              isEnabled={isEnabled}
+            />
+          )}
+          keyExtractor={(item) => item.id.toString() || item.text_imlaei}
+          contentContainerStyle={styles.flatlistContent}
+          onEndReached={loadMoreVerses} // Fetch more data when the user scrolls to the end
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size='small' color='#0000ff' />
+            ) : null
+          }
+        />
 
-                justifyContent: "flex-end",
-                paddingBottom: 15,
-              }}
-            >
-              <Text style={{ fontSize: 18 }}>Al Quran-ul Kareem</Text>
-            </View>
-            <View style={{ flex: 1 }}></View>
-          </Animated.View>
-        )}
-        <PanGestureHandler onGestureEvent={onGestureEvent}>
-          <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.verseContainer}>
-              <Text
-                style={[
-                  styles.verseText,
-                  { fontSize: fontSize, lineHeight: lineHeight },
-                ]}
-              >
-                {pageData.map((verse) => (
-                  <Text key={verse.id}>
-                    {/* Conditionally render Bismillah */}
-                    {currentPage === initialPage &&
-                      hasBismillah &&
-                      verse.verse_number === 1 && (
-                        <Text
-                          style={[styles.bismillah, { fontSize, lineHeight }]}
-                        >
-                          {"\n"}
-                          بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
-                          {"\n"}
-                        </Text>
-                      )}
-                    {verse.text_imlaei}{" "}
-                    {convertToArabicNumerals(verse.verse_number)}{" "}
-                  </Text>
-                ))}
-              </Text>
-            </View>
-            {/* Conditionally render page number */}
-            {!isNavVisible && (
-              <Text style={styles.pageNumber}>Page: {currentPage}</Text>
-            )}
-          </ScrollView>
-        </PanGestureHandler>
+        {/* Bottom Navigation */}
+        <View style={styles.bottomNavigation}>
+          <TouchableOpacity style={styles.navButton}>
+            <Icon name='play' size={25} color='black' />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navButton} onPress={toggleModal}>
+            <Icon name='book-open' size={25} color='black' />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navButton}>
+            <Icon name='bookmark' size={25} color='black' />
+          </TouchableOpacity>
+        </View>
 
-        {/* Conditionally render Bottom Navigation Bar */}
-        {isNavVisible && (
-          <Animated.View
-            style={[styles.bottomNavigation, { bottom: bottomNavAnim }]}
-          >
-            <TouchableOpacity style={styles.navButton}>
-              <Icon name='play' size={25} color='black' />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.navButton} onPress={toggleModal}>
-              <Icon name='book-open' size={25} color='black' />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.navButton}>
-              <Icon name='bookmark' size={25} color='black' />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {/* Sliding Meal Modal */}
+        {/* Modal */}
         <Modal
           isVisible={isModalVisible}
           swipeDirection='down'
@@ -226,60 +216,36 @@ const SurahScreen = ({ route, navigation }) => {
           style={styles.modal}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Meal Content</Text>
-            <Text>This is the sliding up Meal content.</Text>
+            <Text style={styles.modalTitle}>Modal Content</Text>
             <TouchableOpacity onPress={toggleModal}>
               <Text style={styles.closeButton}>Close</Text>
             </TouchableOpacity>
           </View>
         </Modal>
       </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  flatlistContent: {
+    padding: 15,
     backgroundColor: "#F9F6EF",
-    paddingTop: 25,
-    paddingBottom: 10,
-    paddingHorizontal: 5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bismillah: {
-    fontSize: 28,
-    fontFamily: "uthmani-font",
-    textAlign: "center",
-    marginBottom: 50,
-    color: "#333",
-  },
-  surahName: {
-    fontSize: 24,
-    fontFamily: "surah-name",
-    textAlign: "center",
-    marginVertical: 10,
-    color: "#333",
+    minHeight: "100%",
   },
   verseContainer: {
     width: width * 0.9,
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderStyle: "dashed",
+    borderBottomColor: "#000",
   },
   verseText: {
-    marginTop: 10,
     fontFamily: "uthmani-font",
     color: "#333",
     flexWrap: "wrap",
     writingDirection: "rtl",
     textAlign: "justify",
-  },
-  pageNumber: {
-    position: "absolute",
-    bottom: 20, // Adjusted to accommodate the navigation bar
-    fontSize: 13,
-    color: "#666",
-    textAlign: "center",
-    width: "100%",
   },
   loadingContainer: {
     flex: 1,
@@ -292,10 +258,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bottomNavigation: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: height - 60,
     height: 60,
     backgroundColor: "#fff",
     flexDirection: "row",
@@ -303,18 +265,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#ccc",
-  },
-  topNavigation: {
-    position: "absolute",
-    width: "100%",
-    height: 100, // Adjust based on your custom header height
-    backgroundColor: "#fff",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    flexDirection: "row",
-    zIndex: 1, // Ensure it stays on top
   },
   navButton: {
     alignItems: "center",
@@ -337,9 +287,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   closeButton: {
-    position: "absolute",
-    top: -80, // Adjust this value to control how far down the button is from the top
-    right: 130,
     marginTop: 20,
     fontSize: 18,
     color: "blue",
@@ -347,12 +294,3 @@ const styles = StyleSheet.create({
 });
 
 export default SurahScreen;
-
-function convertToArabicNumerals(number) {
-  const arabicNumerals = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-  return number
-    .toString()
-    .split("")
-    .map((digit) => arabicNumerals[parseInt(digit)])
-    .join("");
-}

@@ -1,5 +1,5 @@
 import "react-native-gesture-handler";
-import React from "react";
+import React,{useCallback} from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createDrawerNavigator } from "@react-navigation/drawer";
@@ -8,35 +8,46 @@ import SurahScreen from "./screens/SurahScreen";
 import LibraryScreen from "./screens/LibraryScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import Icon from "react-native-vector-icons/FontAwesome5";
+import * as Haptic from "expo-haptics";
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 
-const HomeStack = ({ navigation }) => (
-  <Stack.Navigator initialRouteName='Home'>
-    <Stack.Screen
-      name='Home'
-      component={HomeScreen}
-      options={{
-        headerLeft: () => (
-          <Icon.Button
-            name='bars'
-            size={20}
-            backgroundColor='transparent'
-            color='black'
-            style={{ marginLeft: 20 }}
-            onPress={() => navigation.toggleDrawer()}
-            underlayColor='transparent'
-          />
-        ),
-      }}
-    />
-    <Stack.Screen
-      name='Surah'
-      component={SurahScreen}
-      options={{ headerShown: false }}
-    />
-  </Stack.Navigator>
-);
+const HomeStack = ({ navigation }) => {
+  const handleDrawerToggle = useCallback(() => {
+    // Trigger a light vibration
+    Haptic.impactAsync(Haptic.ImpactFeedbackStyle.Heavy);
+
+    // Toggle the drawer
+    navigation.toggleDrawer();
+  }, [navigation]);
+  return (
+    <Stack.Navigator initialRouteName='Home'>
+      <Stack.Screen
+        name='Al Quran-ul Kareem'
+        component={HomeScreen}
+        options={{
+          headerLeft: () => (
+            <Icon.Button
+              name='bars'
+              size={20}
+              backgroundColor='transparent'
+              color='black'
+              style={{ marginLeft: 20 }}
+              onPress={handleDrawerToggle}
+              underlayColor='transparent'
+            />
+          ),
+          
+        }}
+      />
+      <Stack.Screen
+        name='Surah'
+        component={SurahScreen}
+        
+      />
+    </Stack.Navigator>
+  );
+};
 
 const App = () => {
   return (
