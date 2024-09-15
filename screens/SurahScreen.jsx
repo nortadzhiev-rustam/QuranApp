@@ -8,13 +8,14 @@ import {
   FlatList,
   Switch,
   TouchableOpacity,
+  I18nManager,
 } from "react-native";
 import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome6";
 import Modal from "react-native-modal";
 import RenderHTML from "react-native-render-html";
-import { I18nManager } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import { useFonts } from "expo-font";
 
 // Allow RTL for Quranic text
 I18nManager.allowRTL(true);
@@ -42,27 +43,42 @@ const convertToArabicNumerals = (number) => {
 };
 
 // Memoized verse item to prevent unnecessary re-renders
-const VerseItem = memo(({ item, fontSize, lineHeight, isEnabled }) => {
-  const source = {
-    html: `<span>${
-      item.translations[0]?.text || "No translation available"
-    }</span>`,
-  };
+const VerseItem = memo(
+  ({ item = {}, fontSize = 16, lineHeight = 1.5, isEnabled = false }) => {
+    const source = {
+      html: `<span>${
+        item.translations[0]?.text || "No translation available"
+      }</span>`,
+    };
 
-  return (
-    <View style={styles.verseContainer}>
-      <Text style={[styles.verseText, { fontSize, lineHeight }]}>
-        {item.text_imlaei} {convertToArabicNumerals(item.verse_number)}
-      </Text>
+    return (
+      <View style={styles.verseContainer}>
+        <Text style={[styles.verseText, { fontSize, lineHeight }]}>
+          {item.text_imlaei} {convertToArabicNumerals(item.verse_number)}
+        </Text>
 
-      <RenderHTML
-        contentWidth={Dimensions.get("window").width}
-        source={source}
-        tagsStyles={{ p: { color: "#555", fontSize: 16 } }}
-      />
-    </View>
-  );
-});
+        {isEnabled && (
+          <RenderHTML
+            contentWidth={Dimensions.get("window").width}
+            source={source}
+            tagsStyles={{ p: { color: "#555", fontSize: 16 } }}
+          />
+        )}
+      </View>
+    );
+  }
+);
+
+// Define the HeaderRight component outside of SurahScreen
+const HeaderRight = ({ isOpen, toggleOpen }) => (
+  <TouchableOpacity style={{ marginRight: 10 }} onPress={toggleOpen}>
+    {isOpen ? (
+      <Icon name='chevron-up' color='black' size={20} />
+    ) : (
+      <Icon name='chevron-down' color='black' size={20} />
+    )}
+  </TouchableOpacity>
+);
 
 const SurahScreen = ({ route, navigation }) => {
   const { surahNumber, hasBismillah, verseCount, surahName } = route.params;
@@ -73,25 +89,25 @@ const SurahScreen = ({ route, navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false); // Handle loading more verses
   const [isEnabled, setIsEnabled] = useState(false); // State for the switch
   const [isModalVisible, setModalVisible] = useState(false); // Modal visibility
-  const [selectedValue, setSelectedValue] = useState("java");
+  const [selectedValue, setSelectedValue] = useState("Choose a Language");
+  const [isOpen, setIsOpen] = useState(false);
   // Toggle switch state
   const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
+  const toggleOpen = () => setIsOpen((previousState) => !previousState);
 
   // Set navigation options (header title and Switch)
   useEffect(() => {
     navigation.setOptions({
       title: surahName,
       headerRight: () => (
-        <TouchableOpacity style={{ marginRight: 10 }} onPress={toggleSwitch}>
-          {isEnabled ? (
-            <Icon name='chevron-up' color='black' size={20} />
-          ) : (
-            <Icon name='chevron-down' color='black' size={20} />
-          )}
-        </TouchableOpacity>
-      ),
+        <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
+      ), // Pass props
     });
-  }, [surahName, isEnabled, navigation]);
+  }, [surahName, isOpen, navigation]);
+
+  const [fontsLoaded] = useFonts({
+    "uthmani-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
+  });
 
   // Fetch surah data (with pagination)
   const fetchSurah = useCallback(
@@ -168,10 +184,48 @@ const SurahScreen = ({ route, navigation }) => {
 
   const { fontSize, lineHeight } = calculateFontSize(width);
 
+  const handleSelect = (index, value) => {
+    setSelectedValue(value);
+  };
+
   return (
     <View style={{ flex: 1 }}>
-      {isEnabled && (
-        <View style={{ flex: 1, height: 2, backgroundColor: "white" }}></View>
+      {isOpen && (
+        <View
+          style={{
+            backgroundColor: "white",
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            maxHeight: 50,
+            paddingHorizontal: 10,
+            justifyContent: "space-between",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              maxHeight: 50,
+              paddingHorizontal: 10,
+            }}
+          >
+            <Text style={{ marginRight: 10 }}>Translation</Text>
+            <Switch
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={isEnabled ? "#f5dd4b" : "#f4f3f4"}
+              ios_backgroundColor='#3e3e3e'
+              onValueChange={toggleSwitch}
+              value={isEnabled}
+            />
+          </View>
+
+          <TouchableOpacity onPress={toggleModal}>
+            <Text>{selectedValue}</Text>
+          </TouchableOpacity>
+        </View>
       )}
       <View style={{ flex: 1 }}>
         <FlatList
@@ -216,10 +270,19 @@ const SurahScreen = ({ route, navigation }) => {
           style={styles.modal}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Modal Content</Text>
-            <TouchableOpacity onPress={toggleModal}>
-              <Text style={styles.closeButton}>Close</Text>
-            </TouchableOpacity>
+            <Text style={styles.label}>Choose a language:</Text>
+            <Picker
+              selectedValue={selectedValue}
+              style={styles.picker}
+              onValueChange={(itemValue, itemIndex) =>
+                setSelectedValue(itemValue)
+              }
+            >
+              <Picker.Item label='English' value='English' />
+              <Picker.Item label='Burmese' value='Burmese' />
+              <Picker.Item label='Turkish' value='Turkish' />
+              <Picker.Item label='Indonesian' value='Indonesian' />
+            </Picker>
           </View>
         </Modal>
       </View>
@@ -239,6 +302,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderStyle: "dashed",
     borderBottomColor: "#000",
+    alignSelf: "center",
   },
   verseText: {
     fontFamily: "uthmani-font",
@@ -278,7 +342,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: height * 0.9,
+    height: height * 0.3,
     alignItems: "center",
   },
   modalTitle: {
@@ -290,6 +354,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 18,
     color: "blue",
+  },
+  picker: {
+    height: 50,
+    width: 200,
   },
 });
 

@@ -12,6 +12,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.quranApp.test",
       "supportsTablet": true
     },
     "android": {
@@ -22,6 +23,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ba55f53b-97c9-47b4-82c1-39ef4372474f"
+      }
     }
   }
 }

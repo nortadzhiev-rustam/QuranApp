@@ -70,15 +70,22 @@ const HomeScreen = ({ navigation }) => {
   const fetchAndStoreSurah = async (surahNumber) => {
     const url = `https://api.quran.com/api/v4/verses/by_chapter/${surahNumber}?fields=text_imlaei,chapter_id`;
     const filePath = `${SURAH_DATA_PATH}${surahNumber}.json`;
-
+  
     try {
+      // Check if the folder exists, if not, create it
+      const folderInfo = await FileSystem.getInfoAsync(SURAH_DATA_PATH);
+      if (!folderInfo.exists) {
+        await FileSystem.makeDirectoryAsync(SURAH_DATA_PATH, { intermediates: true });
+        console.log("Surah data directory created.");
+      }
+  
       // Check if the Surah data is already stored
       const fileInfo = await FileSystem.getInfoAsync(filePath);
       if (!fileInfo.exists) {
         // Download and store the Surah data
         const response = await axios.get(url);
         const surahData = response.data.verses;
-
+  
         await FileSystem.writeAsStringAsync(filePath, JSON.stringify(surahData));
         console.log(`Surah ${surahNumber} data saved!`);
       } else {
