@@ -395,6 +395,7 @@ const styles = StyleSheet.create({
     minHeight: "100%",
     marginTop: Platform.isPad ? 200 : 100,
     paddingBottom: Platform.isPad ? 200 : 100,
+    paddingTop: 10
   },
   verseContainer: {
     width: width * 0.95,
