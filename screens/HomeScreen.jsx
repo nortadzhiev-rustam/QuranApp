@@ -7,16 +7,10 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  Platform,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from 'expo-file-system';  // Use expo-file-system instead of react-native-fs
-import Icon from "react-native-vector-icons/FontAwesome";
-import axios from "axios";
-import { useFonts } from "expo-font";
 
-// Storage keys
-const SURAH_METADATA_KEY = "quran_surah_metadata";
-const SURAH_DATA_PATH = FileSystem.documentDirectory + "quran_surah_data/";
+import { useFonts } from "expo-font";
 
 const HomeScreen = ({ navigation }) => {
   const [surahs, setSurahs] = useState([]);
@@ -26,107 +20,63 @@ const HomeScreen = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
     "custom-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
   });
-
-  // Check if data exists in AsyncStorage or download from API
-  const loadSurahData = async () => {
-    try {
-      const cachedData = await AsyncStorage.getItem(SURAH_METADATA_KEY);
-      if (cachedData) {
-        setSurahs(JSON.parse(cachedData));
-        setLoading(false);
-      } else {
-        // If no cached data, download from API
-        fetchSurahsFromAPI();
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-      setError(error);
-      setLoading(false);
+  const chapters = require("../quran/chapters.json");
+  useEffect(() => {
+    if (fontsLoaded) {
+      setSurahs(chapters);
     }
-  };
-
-  // Fetch Surah metadata and store it in AsyncStorage
-  const fetchSurahsFromAPI = async () => {
-    const baseUrl = "https://api.quran.com/api/v4";
-    const endpoint = "/chapters";
-    const url = baseUrl + endpoint;
-
-    try {
-      const response = await axios.get(url);
-      const data = response.data.chapters;
-
-      // Save to AsyncStorage for offline use
-      await AsyncStorage.setItem(SURAH_METADATA_KEY, JSON.stringify(data));
-      setSurahs(data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching Surah data:", error);
-      setError(error);
-      setLoading(false);
-    }
-  };
-
-  // Fetch and store Surah data using expo-file-system
-  const fetchAndStoreSurah = async (surahNumber) => {
-    const url = `https://api.quran.com/api/v4/verses/by_chapter/${surahNumber}?fields=text_imlaei,chapter_id`;
-    const filePath = `${SURAH_DATA_PATH}${surahNumber}.json`;
-  
-    try {
-      // Check if the folder exists, if not, create it
-      const folderInfo = await FileSystem.getInfoAsync(SURAH_DATA_PATH);
-      if (!folderInfo.exists) {
-        await FileSystem.makeDirectoryAsync(SURAH_DATA_PATH, { intermediates: true });
-        console.log("Surah data directory created.");
-      }
-  
-      // Check if the Surah data is already stored
-      const fileInfo = await FileSystem.getInfoAsync(filePath);
-      if (!fileInfo.exists) {
-        // Download and store the Surah data
-        const response = await axios.get(url);
-        const surahData = response.data.verses;
-  
-        await FileSystem.writeAsStringAsync(filePath, JSON.stringify(surahData));
-        console.log(`Surah ${surahNumber} data saved!`);
-      } else {
-        console.log(`Surah ${surahNumber} already cached!`);
-      }
-    } catch (error) {
-      console.error(`Error downloading Surah ${surahNumber}:`, error);
-    }
-  };
+    setLoading(false);
+  }, [fontsLoaded]);
 
   // Memoized render function to prevent unnecessary re-renders
   const renderItem = useCallback(
     ({ item }) => (
       <TouchableOpacity
         onPress={async () => {
-          // Fetch and store the selected Surah when it's opened
-          await fetchAndStoreSurah(item.id);
           navigation.navigate("Surah", {
             surahNumber: item.id,
-            surahName: item.name_simple,
-            nameArabic: item.name_arabic,
-            initialPage: item.pages[0],
-            hasBismillah: item.bismillah_pre,
-            verseCount: item.verse_count,
+            surahName: item.transliteration,
+            nameArabic: item.name,
+            hasBismillah: item.bismillah,
+            type: item.type,
           });
         }}
         style={styles.verseContainer}
       >
         <Image
           source={
-            item.revelation_place === "makkah"
+            item.type === "meccan"
               ? require("../assets/10171102.png")
               : require("../assets/6152869.png")
           }
           style={styles.image}
         />
         <View style={styles.textContainer}>
-          <Text style={styles.verseText}>{item.name_simple}</Text>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.verseText}>{item.transliteration}</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                width: "30%",
+              }}
+            >
+              <View style={{ flex: 1, height: 1, backgroundColor: "black" }} />
+              <View></View>
+              <View style={{ flex: 1, height: 1, backgroundColor: "black" }} />
+            </View>
+            <Text style={styles.verseText}>"{item.translation}"</Text>
+          </View>
           <View style={styles.verseInfoContainer}>
-            <Text style={styles.verseTextArabic}>{item.name_arabic}</Text>
-            <Text style={styles.verseCount}>{item.verses_count} ayahs</Text>
+            <Text style={styles.verseTextArabic}>{item.name}</Text>
+            <Text style={styles.verseCount}>{item.total_verses} ayahs</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -134,16 +84,11 @@ const HomeScreen = ({ navigation }) => {
     [navigation]
   );
 
-  // Load data on component mount
-  useEffect(() => {
-    loadSurahData();
-  }, []);
-
   // Handle loading and error states
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#333" />
+        <ActivityIndicator size='large' color='#333' />
         <Text>Loading...</Text>
       </View>
     );
@@ -209,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   verseText: {
-    fontSize: 20,
+    fontSize: Platform.isPad ? 20 : 14,
     color: "#333",
   },
   verseTextArabic: {
