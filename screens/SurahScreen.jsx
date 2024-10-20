@@ -117,7 +117,7 @@ const SurahScreen = ({ route, navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false); // Translation switch
   const [isModalVisible, setModalVisible] = useState(false); // Modal visibility
-  const [selectedValue, setSelectedValue] = useState("Choose a Language");
+  const [selectedValue, setSelectedValue] = useState("English");
   const [isOpen, setIsOpen] = useState(false); // Translation toggle menu
   const [isScrolled, setIsScrolled] = useState(false); // Track scroll state
 
@@ -221,9 +221,24 @@ const SurahScreen = ({ route, navigation }) => {
               value={isEnabled}
             />
           </View>
-          <TouchableOpacity onPress={toggleModal}>
-            <Text>{selectedValue}</Text>
-          </TouchableOpacity>
+          {Platform.OS === "android" ? (
+            <Picker
+              selectedValue={selectedValue}
+              style={styles.picker}
+              onValueChange={(itemValue) => {
+                setSelectedValue(itemValue);
+              }}
+            >
+              <Picker.Item label='English' value='English' />
+              <Picker.Item label='Burmese' value='Burmese' />
+              <Picker.Item label='Turkish' value='Turkish' />
+              <Picker.Item label='Indonesian' value='Indonesian' />
+            </Picker>
+          ) : (
+            <TouchableOpacity onPress={toggleModal}>
+              <Text>{selectedValue}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
       <View style={{ flex: 1 }}>
@@ -323,9 +338,7 @@ const SurahScreen = ({ route, navigation }) => {
         <TouchableOpacity style={styles.navButton}>
           <Icon name='play' size={25} color='black' />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton} onPress={toggleModal}>
-          <Icon name='book-open' size={25} color='black' />
-        </TouchableOpacity>
+
         <TouchableOpacity style={styles.navButton}>
           <Icon name='bookmark' size={25} color='black' />
         </TouchableOpacity>
@@ -395,7 +408,7 @@ const styles = StyleSheet.create({
     minHeight: "100%",
     marginTop: Platform.isPad ? 200 : 100,
     paddingBottom: Platform.isPad ? 200 : 100,
-    paddingTop: 10
+    paddingTop: 10,
   },
   verseContainer: {
     width: width * 0.95,
@@ -406,12 +419,13 @@ const styles = StyleSheet.create({
     fontFamily: "uthmani-font",
     color: "#333",
     writingDirection: "rtl",
-    textAlign: I18nManager.isRTL ? "right" : "justify",
+    textAlign: I18nManager.isRTL || Platform.OS === "android" ? "right" : "justify",
   },
   verseTranslation: {
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#000",
+    borderStyle: "dotted",
   },
   bismillahContainer: {
     width: width,
@@ -481,13 +495,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modal: {
-    
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     margin: 0, // No margin around the modal
-    borderWidth:1,
-    borderColor:'black',
-    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: "black",
+    borderStyle: "solid",
   },
   modalContent: {
     backgroundColor: "white",
@@ -504,8 +518,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   picker: {
-    height: 50,
-    width: "100%",
+    height: 10,
+    width: "40%",
   },
   headerContainer: {
     backgroundColor: "white",

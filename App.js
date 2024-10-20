@@ -12,21 +12,9 @@ import * as Haptic from "expo-haptics";
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 import { View, TextInput, StyleSheet } from 'react-native';
-const SearchBar = ({ searchQuery, setSearchQuery }) => 
-  {
-    return (
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search Surah..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-    );
-  };
+
 const HomeStack = ({ navigation }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  
   const handleDrawerToggle = useCallback(() => {
     // Trigger a heavy vibration
     Haptic.impactAsync(Haptic.ImpactFeedbackStyle.Heavy);
@@ -56,10 +44,8 @@ const HomeStack = ({ navigation }) => {
             />
           ),
           
-          // Custom Search Bar in headerTitle
-          headerTitle: () => (
-            <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-          ),
+         
+          
         }}
       />
       <Stack.Screen

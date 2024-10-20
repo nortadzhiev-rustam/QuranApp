@@ -8,25 +8,55 @@ import {
   Image,
   ActivityIndicator,
   Platform,
+  TextInput,
 } from "react-native";
-
 import { useFonts } from "expo-font";
 
 const HomeScreen = ({ navigation }) => {
   const [surahs, setSurahs] = useState([]);
+  const [filteredSurahs, setFilteredSurahs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [search, setSearch] = useState("");
   const [fontsLoaded] = useFonts({
     "custom-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
   });
+
   const chapters = require("../quran/chapters.json");
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <TextInput
+          style={styles.searchBar}
+          placeholder='Search Surah...'
+          value={search}
+          onChangeText={handleSearch}
+        />
+      ),
+    });
+  });
+
   useEffect(() => {
     if (fontsLoaded) {
       setSurahs(chapters);
+      setFilteredSurahs(chapters); // Initialize filteredSurahs with all chapters
     }
     setLoading(false);
   }, [fontsLoaded]);
+
+  // Function to handle search input
+  const handleSearch = (text) => {
+    setSearch(text);
+    if (text?.length > 2) {
+      const filtered = surahs.filter((surah) =>
+        surah.transliteration.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredSurahs(filtered);
+    } else {
+      setFilteredSurahs(surahs);
+    }
+  };
 
   // Memoized render function to prevent unnecessary re-renders
   const renderItem = useCallback(
@@ -115,7 +145,7 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={surahs}
+        data={filteredSurahs}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         getItemLayout={getItemLayout}
@@ -131,6 +161,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     backgroundColor: "#fff",
+  },
+  searchBar: {
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    minWidth: "100%",
   },
   verseContainer: {
     marginVertical: 5,
