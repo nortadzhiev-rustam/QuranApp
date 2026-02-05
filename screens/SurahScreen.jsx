@@ -1,4 +1,4 @@
-import React, { useEffect, useState, memo } from "react";
+import React, { useEffect, useState, memo } from 'react';
 import {
   View,
   Text,
@@ -14,25 +14,25 @@ import {
   ImageBackground,
   Modal,
   ScrollView,
-} from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome6";
-import { Picker } from "@react-native-picker/picker";
-import { useFonts } from "expo-font";
+} from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome6';
+import { Picker } from '@react-native-picker/picker';
+import { useFonts } from 'expo-font';
 
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
 
 // Screen dimensions
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get('window');
 
 // Utility function to convert numbers to Arabic numerals
 const convertToArabicNumerals = (number) => {
-  const arabicNumerals = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
   return number
     .toString()
-    .split("")
+    .split('')
     .map((digit) => arabicNumerals[parseInt(digit)])
-    .join("");
+    .join('');
 };
 
 // Calculate dynamic font size based on screen width
@@ -49,7 +49,7 @@ const calculateFontSize = (screenWidth) => {
 // Memoized VerseItem to prevent unnecessary re-renders
 const VerseItem = memo(
   ({ item = {}, fontSize = 16, lineHeight = 1.5, isEnabled = false }) => {
-    if (item.id === "bismillah") {
+    if (item.id === 'bismillah') {
       return (
         <View style={styles.bismillahContainer}>
           <Text style={styles.bismillahText}>
@@ -91,14 +91,14 @@ const VerseItem = memo(
         )}
       </View>
     );
-  }
+  },
 );
 
 // HeaderRight component for navigation bar
 const HeaderRight = ({ isOpen, toggleOpen }) => (
   <TouchableOpacity style={{ marginRight: 10 }} onPress={toggleOpen}>
     <Icon
-      name={isOpen ? "chevron-up" : "chevron-down"}
+      name={isOpen ? 'chevron-up' : 'chevron-down'}
       color='black'
       size={20}
     />
@@ -107,7 +107,8 @@ const HeaderRight = ({ isOpen, toggleOpen }) => (
 
 // Main SurahScreen component
 const SurahScreen = ({ route, navigation }) => {
-  const { surahNumber, hasBismillah, nameArabic, type } = route.params;
+  const { surahNumber, hasBismillah, nameArabic, type, surahName } =
+    route.params;
 
   // States
   const [verses, setVerses] = useState([]);
@@ -117,14 +118,13 @@ const SurahScreen = ({ route, navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false); // Translation switch
   const [isModalVisible, setModalVisible] = useState(false); // Modal visibility
-  const [selectedValue, setSelectedValue] = useState("English");
+  const [selectedValue, setSelectedValue] = useState('English');
   const [isOpen, setIsOpen] = useState(false); // Translation toggle menu
   const [isScrolled, setIsScrolled] = useState(false); // Track scroll state
 
   // Font loading
   const [fontsLoaded] = useFonts({
-    "uthmani-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
-    "bismillah-font": require("../assets/fonts/quran/bismillah/bismillah-font.ttf"),
+    'uthmani-font': require('../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
 
   // Toggle switch state for translation
@@ -132,7 +132,7 @@ const SurahScreen = ({ route, navigation }) => {
   const toggleOpen = () => setIsOpen((previousState) => !previousState);
 
   // Fetch Quran data
-  const quranData = require("../quran/quran.json");
+  const quranData = require('../quran/quran.json');
 
   // Load Surah data
   useEffect(() => {
@@ -140,22 +140,22 @@ const SurahScreen = ({ route, navigation }) => {
       let surah = quranData.find((item) => item.id === surahNumber);
 
       const bismillahItem = {
-        id: "bismillah",
-        text: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ",
+        id: 'bismillah',
+        text: 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
         translation:
-          "In the name of Allah, the Most Gracious, the Most Merciful",
+          'In the name of Allah, the Most Gracious, the Most Merciful',
       };
 
       if (surah?.verses) {
         if (
           hasBismillah &&
-          !surah.verses.some((verse) => verse.id === "bismillah")
+          !surah.verses.some((verse) => verse.id === 'bismillah')
         ) {
           surah = { ...surah, verses: [bismillahItem, ...surah.verses] }; // Add Bismillah if required
         }
         setVerses(surah.verses);
       } else {
-        setError("Surah not found");
+        setError('Surah not found');
       }
     }
 
@@ -165,12 +165,13 @@ const SurahScreen = ({ route, navigation }) => {
   // Update navigation header
   useEffect(() => {
     navigation.setOptions({
-      title: "Al Qur'an-ul Kareem",
+      headerBackButtonDisplayMode: 'minimal',
+      title: surahName,
       headerRight: () => (
         <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
       ),
     });
-  }, [isOpen, navigation]);
+  }, [isOpen, navigation, surahName]);
 
   // Load more verses for pagination
   const loadMoreVerses = () => {
@@ -215,13 +216,13 @@ const SurahScreen = ({ route, navigation }) => {
           <View style={styles.translationToggle}>
             <Text style={{ marginRight: 10 }}>Translation</Text>
             <Switch
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={isEnabled ? "#f5dd4b" : "#f4f3f4"}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
               onValueChange={toggleSwitch}
               value={isEnabled}
             />
           </View>
-          {Platform.OS === "android" ? (
+          {Platform.OS === 'android' ? (
             <Picker
               selectedValue={selectedValue}
               style={styles.picker}
@@ -248,13 +249,13 @@ const SurahScreen = ({ route, navigation }) => {
             <ImageBackground
               style={styles.surahNameBackground}
               resizeMode='cover'
-              source={require("../assets/surahName.jpeg")}
+              source={require('../assets/surahName.jpeg')}
             >
               <Text style={[styles.verseText, styles.surahName]}>
                 سُورَةٌ {nameArabic}
               </Text>
               <Text style={[styles.verseText, styles.surahType]}>
-                {type === "meccan" ? "مَكِّيَّاتٌ" : "مَدَنِيَّاتٌ"}
+                {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
               </Text>
             </ImageBackground>
           </View>
@@ -289,12 +290,12 @@ const SurahScreen = ({ route, navigation }) => {
             style={{
               flex: 1,
               marginTop: isScrolled ? 0 : Platform.isPad ? 200 : 100,
-              backgroundColor: "#F9F6EF",
+              backgroundColor: '#F9F6EF',
             }}
             onScroll={handleScroll}
           >
             {/* Render Bismillah as a block at the top */}
-            {verses.some((verse) => verse.id === "bismillah") && (
+            {verses.some((verse) => verse.id === 'bismillah') && (
               <View style={styles.bismillahContainer}>
                 <Text style={styles.bismillahText}>
                   بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
@@ -309,18 +310,18 @@ const SurahScreen = ({ route, navigation }) => {
                 {
                   fontSize,
                   lineHeight,
-                  flexWrap: "wrap",
+                  flexWrap: 'wrap',
                   padding: 10,
-                  alignItems: "justify",
+                  alignItems: 'justify',
                 },
               ]}
             >
               {verses.map((verse, index) =>
-                verse.id !== "bismillah" ? (
+                verse.id !== 'bismillah' ? (
                   <Text key={verse.id.toString()}>
-                    {verse.text} {convertToArabicNumerals(verse.id)}{" "}
+                    {verse.text} {convertToArabicNumerals(verse.id)}{' '}
                   </Text>
-                ) : null
+                ) : null,
               )}
             </Text>
           </ScrollView>
@@ -328,7 +329,7 @@ const SurahScreen = ({ route, navigation }) => {
           <View style={{ flex: 1 }}>
             <Image
               style={styles.alFatihahImage}
-              source={require("../assets/fatiha.png")}
+              source={require('../assets/fatiha.png')}
             />
           </View>
         )}
@@ -404,8 +405,8 @@ const SurahScreen = ({ route, navigation }) => {
 // Stylesheet for SurahScreen
 const styles = StyleSheet.create({
   flatlistContent: {
-    backgroundColor: "#F9F6EF",
-    minHeight: "100%",
+    backgroundColor: '#F9F6EF',
+    minHeight: '100%',
     marginTop: Platform.isPad ? 200 : 100,
     paddingBottom: Platform.isPad ? 200 : 100,
     paddingTop: 10,
@@ -413,43 +414,43 @@ const styles = StyleSheet.create({
   verseContainer: {
     width: width * 0.95,
     marginBottom: 15,
-    alignSelf: "center",
+    alignSelf: 'center',
   },
   verseText: {
-    fontFamily: "uthmani-font",
-    color: "#333",
-    writingDirection: "rtl",
-    textAlign: I18nManager.isRTL || Platform.OS === "android" ? "right" : "justify",
+    fontFamily: 'uthmani-font',
+    color: '#333',
+    writingDirection: 'rtl',
+    textAlign: 'justify',
   },
   verseTranslation: {
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#000",
-    borderStyle: "dotted",
+    borderBottomColor: '#000',
+    borderStyle: 'dotted',
   },
   bismillahContainer: {
     width: width,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 10,
     marginBottom: 1,
   },
   bismillahText: {
-    fontFamily: "bismillah-font",
+    fontFamily: 'uthmani-font',
     fontSize: width * 0.08,
-    color: "#D7233C",
-    textAlign: "center",
-    writingDirection: "rtl",
+    color: '#D7233C',
+    textAlign: 'center',
+    writingDirection: 'rtl',
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   surahNameContainer: {
     flex: 1,
@@ -458,22 +459,22 @@ const styles = StyleSheet.create({
     width: width,
     maxHeight: 1,
     zIndex: 1,
-    alignItems: "center",
+    alignItems: 'center',
   },
   surahNameBackground: {
     width: width,
     height: Platform.isPad ? 200 : 100,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   surahName: {
-    color: "#fff",
+    color: '#fff',
     fontSize: width * 0.07,
     lineHeight: width * 0.1,
-    alignItems: "center",
+    alignItems: 'center',
   },
   surahType: {
-    color: "#fff",
+    color: '#fff',
     fontSize: width * 0.07,
     lineHeight: width * 0.1,
   },
@@ -484,34 +485,34 @@ const styles = StyleSheet.create({
   },
   bottomNavigation: {
     height: 60,
-    backgroundColor: "#fff",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: "#ccc",
+    borderTopColor: '#ccc',
   },
   navButton: {
-    alignItems: "center",
+    alignItems: 'center',
   },
   modal: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     margin: 0, // No margin around the modal
     borderWidth: 1,
-    borderColor: "black",
-    borderStyle: "solid",
+    borderColor: 'black',
+    borderStyle: 'solid',
   },
   modalContent: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: width, // Adjust width to be smaller than full screen
-    height: "40%", // Set the height to 40% of the screen height
-    alignItems: "center",
-    justifyContent: "center",
+    height: '40%', // Set the height to 40% of the screen height
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     fontSize: 18,
@@ -519,19 +520,19 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 10,
-    width: "40%",
+    width: '40%',
   },
   headerContainer: {
-    backgroundColor: "white",
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
     maxHeight: 70,
     padding: 10,
-    justifyContent: "space-between",
+    justifyContent: 'space-between',
   },
   translationToggle: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

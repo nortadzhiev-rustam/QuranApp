@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,20 @@ import {
   ActivityIndicator,
   Platform,
   TextInput,
-} from "react-native";
-import { useFonts } from "expo-font";
+} from 'react-native';
+import { useFonts } from 'expo-font';
 
 const HomeScreen = ({ navigation }) => {
   const [surahs, setSurahs] = useState([]);
   const [filteredSurahs, setFilteredSurahs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [fontsLoaded] = useFonts({
-    "custom-font": require("../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf"),
+    'custom-font': require('../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
 
-  const chapters = require("../quran/chapters.json");
+  const chapters = require('../quran/chapters.json');
 
   useEffect(() => {
     navigation.setOptions({
@@ -50,7 +50,7 @@ const HomeScreen = ({ navigation }) => {
     setSearch(text);
     if (text?.length > 2) {
       const filtered = surahs.filter((surah) =>
-        surah.transliteration.toLowerCase().includes(text.toLowerCase())
+        surah.transliteration.toLowerCase().includes(text.toLowerCase()),
       );
       setFilteredSurahs(filtered);
     } else {
@@ -63,7 +63,7 @@ const HomeScreen = ({ navigation }) => {
     ({ item }) => (
       <TouchableOpacity
         onPress={async () => {
-          navigation.navigate("Surah", {
+          navigation.navigate('Surah', {
             surahNumber: item.id,
             surahName: item.transliteration,
             nameArabic: item.name,
@@ -75,9 +75,9 @@ const HomeScreen = ({ navigation }) => {
       >
         <Image
           source={
-            item.type === "meccan"
-              ? require("../assets/10171102.png")
-              : require("../assets/6152869.png")
+            item.type === 'meccan'
+              ? require('../assets/10171102.png')
+              : require('../assets/6152869.png')
           }
           style={styles.image}
         />
@@ -85,22 +85,22 @@ const HomeScreen = ({ navigation }) => {
           <View
             style={{
               flex: 1,
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
             <Text style={styles.verseText}>{item.transliteration}</Text>
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                width: "30%",
+                flexDirection: 'row',
+                alignItems: 'center',
+                width: '30%',
               }}
             >
-              <View style={{ flex: 1, height: 1, backgroundColor: "black" }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: 'black' }} />
               <View></View>
-              <View style={{ flex: 1, height: 1, backgroundColor: "black" }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: 'black' }} />
             </View>
             <Text style={styles.verseText}>"{item.translation}"</Text>
           </View>
@@ -111,7 +111,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </TouchableOpacity>
     ),
-    [navigation]
+    [navigation],
   );
 
   // Handle loading and error states
@@ -151,6 +151,7 @@ const HomeScreen = ({ navigation }) => {
         getItemLayout={getItemLayout}
         initialNumToRender={10}
         windowSize={5} // Adjust based on list size
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
@@ -160,27 +161,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   searchBar: {
     height: 40,
-    borderColor: "#ccc",
+    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 10,
-    minWidth: "100%",
+    minWidth: '100%',
   },
   verseContainer: {
     marginVertical: 5,
     padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "rgba(0,0,0, .4)", // iOS
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: 'rgba(0,0,0, .4)', // iOS
     shadowOffset: { height: 1, width: 1 }, // iOS
     shadowOpacity: 1, // iOS
     shadowRadius: 1, // iOS
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     elevation: 2, // Android
     borderRadius: 20,
     height: 100,
@@ -188,46 +189,46 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   verseText: {
     fontSize: Platform.isPad ? 20 : 14,
-    color: "#333",
+    color: '#333',
   },
   verseTextArabic: {
     fontSize: 20,
-    color: "#333",
-    fontFamily: "custom-font",
+    color: '#333',
+    fontFamily: 'custom-font',
   },
   verseInfoContainer: {
-    flexDirection: "column",
-    alignItems: "flex-end",
+    flexDirection: 'column',
+    alignItems: 'flex-end',
     marginRight: 10,
   },
   verseCount: {
     fontSize: 10,
-    color: "#999",
+    color: '#999',
   },
   loading: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   retryButton: {
     marginTop: 10,
     padding: 10,
-    backgroundColor: "#007bff",
+    backgroundColor: '#007bff',
     borderRadius: 5,
   },
   retryText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
   },
   image: {
