@@ -1,4 +1,4 @@
-package com.quranApp.test
+package com.quranapp.test
 
 import android.app.Application
 import android.content.res.Configuration

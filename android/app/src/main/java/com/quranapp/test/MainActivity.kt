@@ -1,4 +1,4 @@
-package com.quranApp.test
+package com.quranapp.test
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

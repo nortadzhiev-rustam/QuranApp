@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.quranApp.test'
+    namespace 'com.quranapp.test'
     defaultConfig {
-        applicationId 'com.quranApp.test'
+        applicationId 'com.quranapp.test'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
