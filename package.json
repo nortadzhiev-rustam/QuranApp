@@ -1,7 +1,7 @@
 {
   "name": "quranapp",
   "version": "1.0.0",
-  "main": "expo/AppEntry.js",
+  "main": "expo-router/entry.js",
   "scripts": {
     "start": "npx expo start",
     "android": "npx expo run:android",

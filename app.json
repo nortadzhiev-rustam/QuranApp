@@ -6,13 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/AppIcon.png",
     "userInterfaceStyle": "automatic",
+    "scheme": "quranapp",
     "splash": {
       "backgroundColor": "#ffffff",
       "resizeMode": "contain",
       "image": "./assets/AppIcon.png"
     },
     "ios": {
-      "bundleIdentifier": "com.quranApp.test",
+      "bundleIdentifier": "com.quranapp.test",
       "supportsTablet": true,
       "icon": "./assets/AppIcon.icon"
     },
@@ -21,7 +22,7 @@
         "foregroundImage": "./assets/AppIcon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.quranApp.test"
+      "package": "com.quranapp.test"
     },
     "web": {
       "favicon": "./assets/favicon.png"
