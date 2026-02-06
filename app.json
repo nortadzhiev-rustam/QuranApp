@@ -15,7 +15,8 @@
     "ios": {
       "bundleIdentifier": "com.quranapp.test",
       "supportsTablet": true,
-      "icon": "./assets/AppIcon.icon"
+      "icon": "./assets/AppIcon.icon",
+      "appleTeamId": "28QUF89Z2V"
     },
     "android": {
       "adaptiveIcon": {

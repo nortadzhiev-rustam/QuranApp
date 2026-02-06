@@ -1,4 +1,4 @@
-import React, { useEffect, useState, memo } from 'react';
+import React, { useEffect, useState, memo, use } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,8 @@ import Icon from 'react-native-vector-icons/FontAwesome6';
 import { Picker } from '@react-native-picker/picker';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, Stack } from 'expo-router';
-
+import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
+import { TabBarContext } from '../../../../contexts/TabbarContext';
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
 
@@ -69,6 +69,7 @@ const VerseItem = memo(
             {
               fontSize: Platform.isPad ? fontSize * 0.8 : fontSize,
               lineHeight: Platform.isPad ? lineHeight * 0.8 : lineHeight,
+              textAlign: isEnabled ? 'right' : 'justify',
             },
           ]}
         >
@@ -98,7 +99,7 @@ const VerseItem = memo(
 
 // HeaderRight component for navigation bar
 const HeaderRight = ({ isOpen, toggleOpen }) => (
-  <TouchableOpacity style={{ marginRight: 10 }} onPress={toggleOpen}>
+  <TouchableOpacity style={{}} onPress={toggleOpen}>
     <Icon
       name={isOpen ? 'chevron-up' : 'chevron-down'}
       color='black'
@@ -128,7 +129,7 @@ const SurahScreen = () => {
   const [selectedValue, setSelectedValue] = useState('English');
   const [isOpen, setIsOpen] = useState(false); // Translation toggle menu
   const [isScrolled, setIsScrolled] = useState(false); // Track scroll state
-
+  const { setIsTabBarHidden } = use(TabBarContext);
   // Font loading
   const [fontsLoaded] = useFonts({
     'uthmani-font': require('../../../../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
@@ -137,7 +138,12 @@ const SurahScreen = () => {
   // Toggle switch state for translation
   const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
   const toggleOpen = () => setIsOpen((previousState) => !previousState);
-
+  const handlePlayPress = () => {};
+  const handleBookmarkPress = () => {};
+  useFocusEffect(() => {
+    setIsTabBarHidden(true);
+    return () => setIsTabBarHidden(false);
+  });
   // Load Surah data
   useEffect(() => {
     if (fontsLoaded) {
@@ -209,14 +215,52 @@ const SurahScreen = () => {
         options={{
           headerBackButtonDisplayMode: 'minimal',
           title: surahName,
-          headerRight: () => (
-            <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
-          ),
+          headerRight:
+            Platform.OS === 'android'
+              ? () => <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
+              : undefined,
         }}
       />
+      {Platform.OS === 'ios' && (
+        <>
+          <Stack.Toolbar placement='bottom'>
+            <Stack.Toolbar.Button
+              icon='play.fill'
+              accessibilityLabel='Play verse'
+              onPress={handlePlayPress}
+            />
+            <Stack.Toolbar.Spacer />
+            <Stack.Toolbar.Button
+              icon='bookmark'
+              accessibilityLabel='Bookmark verse'
+              onPress={handleBookmarkPress}
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement='right'>
+            <Stack.Toolbar.Menu icon='ellipsis'>
+              <Stack.Toolbar.MenuAction isOn={isEnabled} onPress={toggleSwitch}>
+                Translate
+              </Stack.Toolbar.MenuAction>
+              <Stack.Toolbar.Menu title={selectedValue}>
+                {['English', 'Burmese', 'Turkish', 'Indonesian'].map(
+                  (language) => (
+                    <Stack.Toolbar.MenuAction
+                      key={language}
+                      isOn={selectedValue === language}
+                      onPress={() => setSelectedValue(language)}
+                    >
+                      {language}
+                    </Stack.Toolbar.MenuAction>
+                  ),
+                )}
+              </Stack.Toolbar.Menu>
+            </Stack.Toolbar.Menu>
+          </Stack.Toolbar>
+        </>
+      )}
       <View style={{ flex: 1 }}>
         {/* Translation toggle menu */}
-        {isOpen && (
+        {isOpen && Platform.OS === 'android' && (
           <View style={styles.headerContainer}>
             <View style={styles.translationToggle}>
               <Text style={{ marginRight: 10 }}>Translation</Text>
@@ -250,7 +294,10 @@ const SurahScreen = () => {
         <View style={{ flex: 1 }}>
           {/* Surah name and type, hidden when scrolled */}
           {!isScrolled && (surahNumber !== 1 || isEnabled) && (
-            <SafeAreaView edges={['top']} style={{ marginTop: 50 }}>
+            <SafeAreaView
+              edges={[Platform.OS === 'ios' && 'top']}
+              style={{ marginTop: Platform.OS === 'ios' ? 50 : 0 }}
+            >
               <View style={styles.surahNameContainer}>
                 <ImageBackground
                   style={styles.surahNameBackground}
@@ -335,51 +382,31 @@ const SurahScreen = () => {
               </Text>
             </ScrollView>
           ) : (
-            <View style={{ flex: 1 }}>
-              <Image
-                style={styles.alFatihahImage}
-                source={require('../../../../assets/fatiha.png')}
-              />
+            <SafeAreaView
+              edges={[Platform.OS === 'ios' && 'top']}
+              style={{ marginTop: Platform.OS === 'ios' ? 50 : 0 }}
+            >
+              <View style={{ flex: 1 }}>
+                <Image
+                  style={styles.alFatihahImage}
+                  source={require('../../../../assets/fatiha.png')}
+                />
+              </View>
+            </SafeAreaView>
+          )}
+          {/* Bottom navigation */}
+          {Platform.OS === 'android' && (
+            <View style={styles.bottomNavigation}>
+              <TouchableOpacity style={styles.navButton}>
+                <Icon name='play' size={25} color='black' />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.navButton}>
+                <Icon name='bookmark' size={25} color='black' />
+              </TouchableOpacity>
             </View>
           )}
         </View>
-        {/* Bottom navigation */}
-        <View style={styles.bottomNavigation}>
-          <TouchableOpacity style={styles.navButton}>
-            <Icon name='play' size={25} color='black' />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navButton}>
-            <Icon name='bookmark' size={25} color='black' />
-          </TouchableOpacity>
-        </View>
-
-        {/* Modal for language selection */}
-        {isModalVisible && (
-          <Modal
-            isVisible={isModalVisible}
-            swipeDirection='down'
-            onSwipeComplete={toggleModal}
-            style={styles.modal}
-          >
-            <View style={styles.modalContent}>
-              <Text style={styles.label}>Choose a language:</Text>
-              <Picker
-                selectedValue={selectedValue}
-                style={styles.picker}
-                onValueChange={(itemValue) => {
-                  setSelectedValue(itemValue);
-                  toggleModal();
-                }}
-              >
-                <Picker.Item label='English' value='English' />
-                <Picker.Item label='Burmese' value='Burmese' />
-                <Picker.Item label='Turkish' value='Turkish' />
-                <Picker.Item label='Indonesian' value='Indonesian' />
-              </Picker>
-            </View>
-          </Modal>
-        )}
       </View>
     </>
   );
@@ -464,7 +491,7 @@ const styles = StyleSheet.create({
   alFatihahImage: {
     margin: 0,
     maxWidth: width,
-    height: Platform.isPad ? height * 0.9 : height * 0.81,
+    height: Platform.isPad ? height * 0.9 : height * 0.78,
   },
   bottomNavigation: {
     height: 60,

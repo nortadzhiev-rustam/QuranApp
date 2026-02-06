@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,57 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import PropTypes from 'prop-types';
 import { useFonts } from 'expo-font';
 import { useRouter } from 'expo-router';
 
+// Memoized list item component for optimal performance
+const SurahListItem = memo(({ item, onPress }) => {
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.verseContainer}>
+      <Image
+        source={
+          item.type === 'meccan'
+            ? require('../../../assets/10171102.png')
+            : require('../../../assets/6152869.png')
+        }
+        style={styles.image}
+      />
+      <View style={styles.textContainer}>
+        <View style={styles.centerContent}>
+          <Text style={styles.verseText}>{item.transliteration}</Text>
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <View />
+            <View style={styles.dividerLine} />
+          </View>
+          <Text style={styles.verseText}>"{item.translation}"</Text>
+        </View>
+        <View style={styles.verseInfoContainer}>
+          <Text style={styles.verseTextArabic}>{item.name}</Text>
+          <Text style={styles.verseCount}>{item.total_verses} ayahs</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+SurahListItem.displayName = 'SurahListItem';
+SurahListItem.propTypes = {
+  item: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    name: PropTypes.string.isRequired,
+    transliteration: PropTypes.string.isRequired,
+    translation: PropTypes.string.isRequired,
+    type: PropTypes.string.isRequired,
+    total_verses: PropTypes.number.isRequired,
+    bismillah: PropTypes.bool,
+  }).isRequired,
+  onPress: PropTypes.func.isRequired,
+};
+
 const HomeScreen = () => {
   const router = useRouter();
-  const [surahs, setSurahs] = useState([]);
   const [filteredSurahs, setFilteredSurahs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error] = useState(null);
@@ -26,70 +71,45 @@ const HomeScreen = () => {
     if (fontsLoaded) {
       // Lazy load chapters data to prevent Metro freeze
       const chapters = require('../../../quran/chapters.json');
-      setSurahs(chapters);
-      setFilteredSurahs(chapters); // Initialize filteredSurahs with all chapters
+      setFilteredSurahs(chapters);
     }
     setLoading(false);
   }, [fontsLoaded]);
 
+  // Handler for surah press
+  const handleSurahPress = useCallback(
+    (item) => () => {
+      router.push({
+        pathname: 'surah/[id]',
+        params: {
+          id: item.id.toString(),
+          surahName: item.transliteration,
+          nameArabic: item.name,
+          hasBismillah: item.bismillah ? 'true' : 'false',
+          type: item.type,
+          totalVerses: item.total_verses.toString(),
+        },
+      });
+    },
+    [router],
+  );
+
   // Memoized render function to prevent unnecessary re-renders
   const renderItem = useCallback(
     ({ item }) => (
-      <TouchableOpacity
-        onPress={async () => {
-          router.push({
-            pathname: 'surah/[id]',
-            params: {
-              id: item.id.toString(),
-              surahName: item.transliteration,
-              nameArabic: item.name,
-              hasBismillah: item.bismillah ? 'true' : 'false',
-              type: item.type,
-              totalVerses: item.total_verses.toString(),
-            },
-          });
-        }}
-        style={styles.verseContainer}
-      >
-        <Image
-          source={
-            item.type === 'meccan'
-              ? require('../../../assets/10171102.png')
-              : require('../../../assets/6152869.png')
-          }
-          style={styles.image}
-        />
-        <View style={styles.textContainer}>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={styles.verseText}>{item.transliteration}</Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                width: '30%',
-              }}
-            >
-              <View style={{ flex: 1, height: 1, backgroundColor: 'black' }} />
-              <View></View>
-              <View style={{ flex: 1, height: 1, backgroundColor: 'black' }} />
-            </View>
-            <Text style={styles.verseText}>"{item.translation}"</Text>
-          </View>
-          <View style={styles.verseInfoContainer}>
-            <Text style={styles.verseTextArabic}>{item.name}</Text>
-            <Text style={styles.verseCount}>{item.total_verses} ayahs</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
+      <SurahListItem item={item} onPress={handleSurahPress(item)} />
     ),
-    [router],
+    [handleSurahPress],
+  );
+
+  // Implement getItemLayout if all items have the same height
+  const getItemLayout = useCallback(
+    (data, index) => ({
+      length: 110, // item height (100 + margin 10)
+      offset: 110 * index,
+      index,
+    }),
+    [],
   );
 
   // Handle loading and error states
@@ -110,13 +130,6 @@ const HomeScreen = () => {
     );
   }
 
-  // Implement getItemLayout if all items have the same height
-  const getItemLayout = (data, index) => ({
-    length: 100, // item height
-    offset: 100 * index, // item height multiplied by index
-    index,
-  });
-
   return (
     <View style={styles.container}>
       <FlatList
@@ -125,7 +138,10 @@ const HomeScreen = () => {
         renderItem={renderItem}
         getItemLayout={getItemLayout}
         initialNumToRender={10}
-        windowSize={5} // Adjust based on list size
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        removeClippedSubviews={true}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior='automatic'
       />
@@ -168,6 +184,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  centerContent: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '30%',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'black',
   },
   verseText: {
     fontSize: Platform.isPad ? 20 : 14,

@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { Platform } from 'react-native';
 
 export default function Layout() {
   return (
@@ -6,13 +7,15 @@ export default function Layout() {
       screenOptions={{
         headerShown: true,
         headerBackTitleVisible: false,
+        headerTransparent: Platform.OS === 'ios',
         headerTintColor: '#333',
         headerStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
         },
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerBlurEffect: 'none',
       }}
     >
       <Stack.Screen
