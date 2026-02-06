@@ -11,10 +11,10 @@ import SettingsScreen from './screens/SettingsScreen';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import * as Haptic from 'expo-haptics';
 import * as SplashScreen from 'expo-splash-screen';
-import CustomSplashScreen from './components/CustomSplashScreen';
+import CustomSplashScreen from './screens/CustomSplashScreen';
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
-import { View, TextInput, StyleSheet, Platform } from 'react-native';
+import { View, TextInput, StyleSheet, Platform, Image } from 'react-native';
 
 // Hide the native splash screen immediately
 SplashScreen.hideAsync();
@@ -23,7 +23,6 @@ const HomeStack = ({ navigation }) => {
   const handleDrawerToggle = useCallback(() => {
     // Trigger a heavy vibration
     Haptic.impactAsync(Haptic.ImpactFeedbackStyle.Heavy);
-
     // Toggle the drawer
     navigation.toggleDrawer();
   }, [navigation]);
@@ -31,21 +30,29 @@ const HomeStack = ({ navigation }) => {
     <Stack.Navigator
       initialRouteName='Home'
       screenOptions={{
-        headerLargeTitle: Platform.OS === 'ios',
+        headerTransparent: true,
       }}
     >
       <Stack.Screen
         name='Home'
         component={HomeScreen}
         options={{
+          headerTitle: () => (
+            <View style={styles.searchContainer}>
+              <Image
+                source={require('./assets/image.png')}
+                style={{ width: 24, height: 24, marginLeft: 8 }}
+              />
+            </View>
+          ),
           headerLeft: () => (
             <Icon.Button
               name='bars'
-              size={28}
+              size={18}
               backgroundColor='transparent'
-              color='default'
-              style={{ marginLeft: 20 }}
+              color='black'
               onPress={handleDrawerToggle}
+              style={{ marginLeft: 0 }}
               underlayColor='transparent'
             />
           ),
@@ -105,12 +112,6 @@ const App = () => {
 const styles = StyleSheet.create({
   searchContainer: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f2f2f2',
-    borderRadius: 10,
-    marginVertical: 5,
   },
   searchInput: {
     width: '100%',

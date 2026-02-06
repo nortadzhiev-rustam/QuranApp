@@ -19,6 +19,7 @@ import Icon from 'react-native-vector-icons/FontAwesome6';
 import { Picker } from '@react-native-picker/picker';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, Stack } from 'expo-router';
 
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
@@ -32,7 +33,7 @@ const convertToArabicNumerals = (number) => {
   return number
     .toString()
     .split('')
-    .map((digit) => arabicNumerals[parseInt(digit)])
+    .map((digit) => arabicNumerals[Number.parseInt(digit, 10)])
     .join('');
 };
 
@@ -54,7 +55,7 @@ const VerseItem = memo(
       return (
         <View style={styles.bismillahContainer}>
           <Text style={styles.bismillahText}>
-            بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+            بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
           </Text>
         </View>
       );
@@ -107,16 +108,21 @@ const HeaderRight = ({ isOpen, toggleOpen }) => (
 );
 
 // Main SurahScreen component
-const SurahScreen = ({ route, navigation }) => {
-  const { surahNumber, hasBismillah, nameArabic, type, surahName } =
-    route.params;
+const SurahScreen = () => {
+  const params = useLocalSearchParams();
+  const surahNumber = Number.parseInt(params.id, 10);
+  const hasBismillah =
+    params.hasBismillah === 'true' || params.hasBismillah === true;
+  const nameArabic = params.nameArabic;
+  const type = params.type;
+  const surahName = params.surahName;
 
   // States
   const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1); // Pagination
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingMore] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false); // Translation switch
   const [isModalVisible, setModalVisible] = useState(false); // Modal visibility
   const [selectedValue, setSelectedValue] = useState('English');
@@ -125,7 +131,7 @@ const SurahScreen = ({ route, navigation }) => {
 
   // Font loading
   const [fontsLoaded] = useFonts({
-    'uthmani-font': require('../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
+    'uthmani-font': require('../../../../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
 
   // Toggle switch state for translation
@@ -136,12 +142,12 @@ const SurahScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (fontsLoaded) {
       // Lazy load quran data to prevent Metro freeze
-      const quranData = require('../quran/quran.json');
+      const quranData = require('../../../../quran/quran.json');
       let surah = quranData.find((item) => item.id === surahNumber);
 
       const bismillahItem = {
         id: 'bismillah',
-        text: 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
+        text: 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
         translation:
           'In the name of Allah, the Most Gracious, the Most Merciful',
       };
@@ -161,17 +167,6 @@ const SurahScreen = ({ route, navigation }) => {
 
     setLoading(false);
   }, [surahNumber, fontsLoaded]);
-
-  // Update navigation header
-  useEffect(() => {
-    navigation.setOptions({
-      headerBackButtonDisplayMode: 'minimal',
-      title: surahName,
-      headerRight: () => (
-        <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
-      ),
-    });
-  }, [isOpen, navigation, surahName]);
 
   // Load more verses for pagination
   const loadMoreVerses = () => {
@@ -209,200 +204,184 @@ const SurahScreen = ({ route, navigation }) => {
   const { fontSize, lineHeight } = calculateFontSize(width);
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Translation toggle menu */}
-      {isOpen && (
-        <View style={styles.headerContainer}>
-          <View style={styles.translationToggle}>
-            <Text style={{ marginRight: 10 }}>Translation</Text>
-            <Switch
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
-              onValueChange={toggleSwitch}
-              value={isEnabled}
-            />
+    <>
+      <Stack.Screen
+        options={{
+          headerBackButtonDisplayMode: 'minimal',
+          title: surahName,
+          headerRight: () => (
+            <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
+          ),
+        }}
+      />
+      <View style={{ flex: 1 }}>
+        {/* Translation toggle menu */}
+        {isOpen && (
+          <View style={styles.headerContainer}>
+            <View style={styles.translationToggle}>
+              <Text style={{ marginRight: 10 }}>Translation</Text>
+              <Switch
+                trackColor={{ false: '#767577', true: '#81b0ff' }}
+                thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
+                onValueChange={toggleSwitch}
+                value={isEnabled}
+              />
+            </View>
+            {Platform.OS === 'android' ? (
+              <Picker
+                selectedValue={selectedValue}
+                style={styles.picker}
+                onValueChange={(itemValue) => {
+                  setSelectedValue(itemValue);
+                }}
+              >
+                <Picker.Item label='English' value='English' />
+                <Picker.Item label='Burmese' value='Burmese' />
+                <Picker.Item label='Turkish' value='Turkish' />
+                <Picker.Item label='Indonesian' value='Indonesian' />
+              </Picker>
+            ) : (
+              <TouchableOpacity onPress={toggleModal}>
+                <Text>{selectedValue}</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          {Platform.OS === 'android' ? (
-            <Picker
-              selectedValue={selectedValue}
-              style={styles.picker}
-              onValueChange={(itemValue) => {
-                setSelectedValue(itemValue);
+        )}
+        <View style={{ flex: 1 }}>
+          {/* Surah name and type, hidden when scrolled */}
+          {!isScrolled && (surahNumber !== 1 || isEnabled) && (
+            <SafeAreaView edges={['top']} style={{ marginTop: 50 }}>
+              <View style={styles.surahNameContainer}>
+                <ImageBackground
+                  style={styles.surahNameBackground}
+                  resizeMode='cover'
+                  source={require('../../../../assets/surahName.jpeg')}
+                >
+                  <Text style={[styles.verseText, styles.surahName]}>
+                    سُورَةٌ {nameArabic}
+                  </Text>
+                  <Text style={[styles.verseText, styles.surahType]}>
+                    {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
+                  </Text>
+                </ImageBackground>
+              </View>
+            </SafeAreaView>
+          )}
+
+          {/* FlatList for Surah verses when enabled */}
+          {isEnabled ? (
+            <FlatList
+              data={verses}
+              renderItem={({ item }) => (
+                <VerseItem
+                  item={item}
+                  fontSize={fontSize}
+                  lineHeight={lineHeight}
+                  isEnabled={isEnabled}
+                />
+              )}
+              contentInsetAdjustmentBehavior='automatic'
+              keyExtractor={(item) => item.id.toString() || item.text}
+              contentContainerStyle={styles.flatlistContent}
+              onEndReached={loadMoreVerses}
+              onEndReachedThreshold={0.5}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ListFooterComponent={
+                loadingMore ? (
+                  <ActivityIndicator size='small' color='#0000ff' />
+                ) : null
+              }
+            />
+          ) : surahNumber !== 1 ? (
+            <ScrollView
+              style={{
+                flex: 1,
+                marginTop: isScrolled ? 0 : Platform.isPad ? 200 : 100,
+                backgroundColor: '#F9F6EF',
               }}
+              onScroll={handleScroll}
+              contentInsetAdjustmentBehavior='automatic'
             >
-              <Picker.Item label='English' value='English' />
-              <Picker.Item label='Burmese' value='Burmese' />
-              <Picker.Item label='Turkish' value='Turkish' />
-              <Picker.Item label='Indonesian' value='Indonesian' />
-            </Picker>
+              {/* Render Bismillah as a block at the top */}
+              {verses.some((verse) => verse.id === 'bismillah') && (
+                <View style={styles.bismillahContainer}>
+                  <Text style={styles.bismillahText}>
+                    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+                  </Text>
+                </View>
+              )}
+
+              {/* Render all verses inline after Bismillah */}
+              <Text
+                style={[
+                  styles.verseText,
+                  {
+                    fontSize,
+                    lineHeight,
+                    flexWrap: 'wrap',
+                    padding: 10,
+                    alignItems: 'justify',
+                  },
+                ]}
+              >
+                {verses.map((verse, index) =>
+                  verse.id !== 'bismillah' ? (
+                    <Text key={verse.id.toString()}>
+                      {verse.text} {convertToArabicNumerals(verse.id)}{' '}
+                    </Text>
+                  ) : null,
+                )}
+              </Text>
+            </ScrollView>
           ) : (
-            <TouchableOpacity onPress={toggleModal}>
-              <Text>{selectedValue}</Text>
-            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Image
+                style={styles.alFatihahImage}
+                source={require('../../../../assets/fatiha.png')}
+              />
+            </View>
           )}
         </View>
-      )}
-      <View style={{ flex: 1 }}>
-        {/* Surah name and type, hidden when scrolled */}
-        {!isScrolled && (surahNumber !== 1 || isEnabled) && (
-          <SafeAreaView edges={['top']} style={{ marginTop: 50 }}>
-            <View style={styles.surahNameContainer}>
-              <ImageBackground
-                style={styles.surahNameBackground}
-                resizeMode='cover'
-                source={require('../assets/surahName.jpeg')}
-              >
-                <Text style={[styles.verseText, styles.surahName]}>
-                  سُورَةٌ {nameArabic}
-                </Text>
-                <Text style={[styles.verseText, styles.surahType]}>
-                  {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
-                </Text>
-              </ImageBackground>
-            </View>
-          </SafeAreaView>
-        )}
+        {/* Bottom navigation */}
+        <View style={styles.bottomNavigation}>
+          <TouchableOpacity style={styles.navButton}>
+            <Icon name='play' size={25} color='black' />
+          </TouchableOpacity>
 
-        {/* FlatList for Surah verses when enabled */}
-        {isEnabled ? (
-          <FlatList
-            data={verses}
-            renderItem={({ item }) => (
-              <VerseItem
-                item={item}
-                fontSize={fontSize}
-                lineHeight={lineHeight}
-                isEnabled={isEnabled}
-              />
-            )}
-            contentInsetAdjustmentBehavior='automatic'
-            keyExtractor={(item) => item.id.toString() || item.text}
-            contentContainerStyle={styles.flatlistContent}
-            onEndReached={loadMoreVerses}
-            onEndReachedThreshold={0.5}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            ListFooterComponent={
-              loadingMore ? (
-                <ActivityIndicator size='small' color='#0000ff' />
-              ) : null
-            }
-          />
-        ) : surahNumber !== 1 ? (
-          <ScrollView
-            style={{
-              flex: 1,
-              marginTop: isScrolled ? 0 : Platform.isPad ? 200 : 100,
-              backgroundColor: '#F9F6EF',
-            }}
-            onScroll={handleScroll}
-            contentInsetAdjustmentBehavior='automatic'
+          <TouchableOpacity style={styles.navButton}>
+            <Icon name='bookmark' size={25} color='black' />
+          </TouchableOpacity>
+        </View>
+
+        {/* Modal for language selection */}
+        {isModalVisible && (
+          <Modal
+            isVisible={isModalVisible}
+            swipeDirection='down'
+            onSwipeComplete={toggleModal}
+            style={styles.modal}
           >
-            {/* Render Bismillah as a block at the top */}
-            {verses.some((verse) => verse.id === 'bismillah') && (
-              <View style={styles.bismillahContainer}>
-                <Text style={styles.bismillahText}>
-                  بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
-                </Text>
-              </View>
-            )}
-
-            {/* Render all verses inline after Bismillah */}
-            <Text
-              style={[
-                styles.verseText,
-                {
-                  fontSize,
-                  lineHeight,
-                  flexWrap: 'wrap',
-                  padding: 10,
-                  alignItems: 'justify',
-                },
-              ]}
-            >
-              {verses.map((verse, index) =>
-                verse.id !== 'bismillah' ? (
-                  <Text key={verse.id.toString()}>
-                    {verse.text} {convertToArabicNumerals(verse.id)}{' '}
-                  </Text>
-                ) : null,
-              )}
-            </Text>
-          </ScrollView>
-        ) : (
-          <View style={{ flex: 1 }}>
-            <Image
-              style={styles.alFatihahImage}
-              source={require('../assets/fatiha.png')}
-            />
-          </View>
+            <View style={styles.modalContent}>
+              <Text style={styles.label}>Choose a language:</Text>
+              <Picker
+                selectedValue={selectedValue}
+                style={styles.picker}
+                onValueChange={(itemValue) => {
+                  setSelectedValue(itemValue);
+                  toggleModal();
+                }}
+              >
+                <Picker.Item label='English' value='English' />
+                <Picker.Item label='Burmese' value='Burmese' />
+                <Picker.Item label='Turkish' value='Turkish' />
+                <Picker.Item label='Indonesian' value='Indonesian' />
+              </Picker>
+            </View>
+          </Modal>
         )}
       </View>
-      {/* Bottom navigation */}
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity style={styles.navButton}>
-          <Icon name='play' size={25} color='black' />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navButton}>
-          <Icon name='bookmark' size={25} color='black' />
-        </TouchableOpacity>
-      </View>
-
-      {/* Modal for language selection */}
-
-      {isModalVisible && (
-        <Modal
-          isVisible={isModalVisible}
-          swipeDirection='down' // Change to swipe down if needed
-          onSwipeComplete={toggleModal}
-          style={styles.modal}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.label}>Choose a language:</Text>
-            <Picker
-              selectedValue={selectedValue}
-              style={styles.picker}
-              onValueChange={(itemValue) => {
-                setSelectedValue(itemValue);
-                toggleModal();
-              }}
-            >
-              <Picker.Item label='English' value='English' />
-              <Picker.Item label='Burmese' value='Burmese' />
-              <Picker.Item label='Turkish' value='Turkish' />
-              <Picker.Item label='Indonesian' value='Indonesian' />
-            </Picker>
-          </View>
-        </Modal>
-      )}
-
-      {isModalVisible && (
-        <Modal
-          isVisible={isModalVisible}
-          swipeDirection='down' // Change to swipe down if needed
-          onSwipeComplete={toggleModal}
-          style={styles.modal}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.label}>Choose a language:</Text>
-            <Picker
-              selectedValue={selectedValue}
-              style={styles.picker}
-              onValueChange={(itemValue) => {
-                setSelectedValue(itemValue);
-                toggleModal();
-              }}
-            >
-              <Picker.Item label='English' value='English' />
-              <Picker.Item label='Burmese' value='Burmese' />
-              <Picker.Item label='Turkish' value='Turkish' />
-              <Picker.Item label='Indonesian' value='Indonesian' />
-            </Picker>
-          </View>
-        </Modal>
-      )}
-    </View>
+    </>
   );
 };
 
@@ -503,7 +482,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 0, // No margin around the modal
+    margin: 0,
     borderWidth: 1,
     borderColor: 'black',
     borderStyle: 'solid',
@@ -513,8 +492,8 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    width: width, // Adjust width to be smaller than full screen
-    height: '40%', // Set the height to 40% of the screen height
+    width: width,
+    height: '40%',
     alignItems: 'center',
     justifyContent: 'center',
   },

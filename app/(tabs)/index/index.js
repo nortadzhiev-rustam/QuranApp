@@ -8,54 +8,45 @@ import {
   Image,
   ActivityIndicator,
   Platform,
-  TextInput,
 } from 'react-native';
 import { useFonts } from 'expo-font';
+import { useRouter } from 'expo-router';
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = () => {
+  const router = useRouter();
   const [surahs, setSurahs] = useState([]);
   const [filteredSurahs, setFilteredSurahs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
+  const [error] = useState(null);
   const [fontsLoaded] = useFonts({
-    'custom-font': require('../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
+    'custom-font': require('../../../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
-
-  const chapters = require('../quran/chapters.json');
 
   useEffect(() => {
     if (fontsLoaded) {
+      // Lazy load chapters data to prevent Metro freeze
+      const chapters = require('../../../quran/chapters.json');
       setSurahs(chapters);
       setFilteredSurahs(chapters); // Initialize filteredSurahs with all chapters
     }
     setLoading(false);
   }, [fontsLoaded]);
 
-  // Function to handle search input
-  const handleSearch = (text) => {
-    setSearch(text);
-    if (text?.length > 2) {
-      const filtered = surahs.filter((surah) =>
-        surah.transliteration.toLowerCase().includes(text.toLowerCase()),
-      );
-      setFilteredSurahs(filtered);
-    } else {
-      setFilteredSurahs(surahs);
-    }
-  };
-
   // Memoized render function to prevent unnecessary re-renders
   const renderItem = useCallback(
     ({ item }) => (
       <TouchableOpacity
         onPress={async () => {
-          navigation.navigate('Surah', {
-            surahNumber: item.id,
-            surahName: item.transliteration,
-            nameArabic: item.name,
-            hasBismillah: item.bismillah,
-            type: item.type,
+          router.push({
+            pathname: 'surah/[id]',
+            params: {
+              id: item.id.toString(),
+              surahName: item.transliteration,
+              nameArabic: item.name,
+              hasBismillah: item.bismillah ? 'true' : 'false',
+              type: item.type,
+              totalVerses: item.total_verses.toString(),
+            },
           });
         }}
         style={styles.verseContainer}
@@ -63,8 +54,8 @@ const HomeScreen = ({ navigation }) => {
         <Image
           source={
             item.type === 'meccan'
-              ? require('../assets/10171102.png')
-              : require('../assets/6152869.png')
+              ? require('../../../assets/10171102.png')
+              : require('../../../assets/6152869.png')
           }
           style={styles.image}
         />
@@ -98,7 +89,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </TouchableOpacity>
     ),
-    [navigation],
+    [router],
   );
 
   // Handle loading and error states
@@ -115,9 +106,6 @@ const HomeScreen = ({ navigation }) => {
     return (
       <View style={styles.errorContainer}>
         <Text>Error: {error.message}</Text>
-        <TouchableOpacity onPress={loadSurahData} style={styles.retryButton}>
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
       </View>
     );
   }
