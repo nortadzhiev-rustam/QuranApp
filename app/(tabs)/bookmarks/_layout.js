@@ -6,14 +6,14 @@ export default function Layout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        headerBackTitleVisible: false,
+        title: 'Bookmarks',
         headerTransparent: Platform.OS === 'ios',
         headerTintColor: Platform.OS==='ios'?DynamicColorIOS({
           light: '#03232c',
           dark: '#fff',
         }): 'auto',
         headerStyle: {
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
+          backgroundColor: Platform.OS==='ios'?'transparent': '#fff',
         },
         headerTitleStyle: {
           fontWeight: 'bold',
@@ -21,18 +21,7 @@ export default function Layout() {
         headerBlurEffect: 'none',
       }}
     >
-      <Stack.Screen
-        name='index'
-        options={{
-          title: "Al-Qur'an",
-        }}
-      />
-      <Stack.Screen
-        name='surah/[id]'
-        options={{
-          title: 'Surah',
-        }}
-      />
+      <Stack.Screen name='index' />
     </Stack>
   );
 }
