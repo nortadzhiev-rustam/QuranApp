@@ -14,9 +14,7 @@ const CustomSplashScreen = ({ onFinish }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const textFadeAnim = useRef(new Animated.Value(0)).current;
-  const [fontsLoaded] = useFonts({
-    'uthmani-font': require('../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
-  });
+
   useEffect(() => {
     // Logo animation
     Animated.parallel([
@@ -123,7 +121,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontFamily: 'uthmani-font',
     fontSize: 28,
     fontWeight: 'bold',
     color: '#2c3e50',

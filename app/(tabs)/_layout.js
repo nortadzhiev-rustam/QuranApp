@@ -1,5 +1,5 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { TabBarContext } from '../../contexts/TabbarContext';
+import { TabBarContext } from '@/contexts/TabBarContext';
 import { useState } from 'react';
 export default function TabsLayout() {
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);

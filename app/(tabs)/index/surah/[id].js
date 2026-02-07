@@ -20,7 +20,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
-import { TabBarContext } from '../../../../contexts/TabbarContext';
+import { TabBarContext } from '@/contexts/TabBarContext';
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
 
@@ -148,7 +148,7 @@ const SurahScreen = () => {
   useEffect(() => {
     if (fontsLoaded) {
       // Lazy load quran data to prevent Metro freeze
-      const quranData = require('../../../../quran/quran.json');
+      const quranData = require('@/quran/quran.json');
       let surah = quranData.find((item) => item.id === surahNumber);
 
       const bismillahItem = {
@@ -237,11 +237,8 @@ const SurahScreen = () => {
             />
           </Stack.Toolbar>
           <Stack.Toolbar placement='right'>
-            <Stack.Toolbar.Menu icon='ellipsis'>
-              <Stack.Toolbar.MenuAction isOn={isEnabled} onPress={toggleSwitch}>
-                Translate
-              </Stack.Toolbar.MenuAction>
-              <Stack.Toolbar.Menu title={selectedValue}>
+            {isEnabled && (
+              <Stack.Toolbar.Menu icon='translate' title={selectedValue}>
                 {['English', 'Burmese', 'Turkish', 'Indonesian'].map(
                   (language) => (
                     <Stack.Toolbar.MenuAction
@@ -254,6 +251,15 @@ const SurahScreen = () => {
                   ),
                 )}
               </Stack.Toolbar.Menu>
+            )}
+            <Stack.Toolbar.Menu icon='ellipsis'>
+              <Stack.Toolbar.MenuAction
+                icon='switch.2'
+                isOn={isEnabled}
+                onPress={toggleSwitch}
+              >
+                Translate
+              </Stack.Toolbar.MenuAction>
             </Stack.Toolbar.Menu>
           </Stack.Toolbar>
         </>

@@ -20,8 +20,8 @@ const SurahListItem = memo(({ item, onPress }) => {
       <Image
         source={
           item.type === 'meccan'
-            ? require('../../../assets/10171102.png')
-            : require('../../../assets/6152869.png')
+            ? require('@/assets/10171102.png')
+            : require('@/assets/6152869.png')
         }
         style={styles.image}
       />
@@ -64,13 +64,13 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error] = useState(null);
   const [fontsLoaded] = useFonts({
-    'custom-font': require('../../../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
+    'custom-font': require('@/assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
 
   useEffect(() => {
     if (fontsLoaded) {
       // Lazy load chapters data to prevent Metro freeze
-      const chapters = require('../../../quran/chapters.json');
+      const chapters = require('@/quran/chapters.json');
       setFilteredSurahs(chapters);
     }
     setLoading(false);
