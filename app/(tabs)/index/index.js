@@ -1,4 +1,11 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  memo,
+  useMemo,
+  useLayoutEffect,
+} from 'react';
 import {
   View,
   Text,
@@ -11,12 +18,23 @@ import {
 } from 'react-native';
 import PropTypes from 'prop-types';
 import { useFonts } from 'expo-font';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Memoized list item component for optimal performance
-const SurahListItem = memo(({ item, onPress }) => {
+const SurahListItem = memo(({ item, onPress, theme, t }) => {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.verseContainer}>
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.verseContainer,
+        {
+          backgroundColor: theme.colors.card,
+          shadowColor: theme.colors.shadow,
+        },
+      ]}
+    >
       <Image
         source={
           item.type === 'meccan'
@@ -27,17 +45,37 @@ const SurahListItem = memo(({ item, onPress }) => {
       />
       <View style={styles.textContainer}>
         <View style={styles.centerContent}>
-          <Text style={styles.verseText}>{item.transliteration}</Text>
+          <Text style={[styles.verseText, { color: theme.colors.text }]}>
+            {item.transliteration}
+          </Text>
           <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
+            <View
+              style={[
+                styles.dividerLine,
+                { backgroundColor: theme.colors.border },
+              ]}
+            />
             <View />
-            <View style={styles.dividerLine} />
+            <View
+              style={[
+                styles.dividerLine,
+                { backgroundColor: theme.colors.border },
+              ]}
+            />
           </View>
-          <Text style={styles.verseText}>"{item.translation}"</Text>
+          <Text style={[styles.verseText, { color: theme.colors.text }]}>
+            "{item.translation}"
+          </Text>
         </View>
         <View style={styles.verseInfoContainer}>
-          <Text style={styles.verseTextArabic}>{item.name}</Text>
-          <Text style={styles.verseCount}>{item.total_verses} ayahs</Text>
+          <Text style={[styles.verseTextArabic, { color: theme.colors.text }]}>
+            {item.name}
+          </Text>
+          <Text
+            style={[styles.verseCount, { color: theme.colors.textSecondary }]}
+          >
+            {item.total_verses} {t.ayahs}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -56,11 +94,17 @@ SurahListItem.propTypes = {
     bismillah: PropTypes.bool,
   }).isRequired,
   onPress: PropTypes.func.isRequired,
+  theme: PropTypes.object.isRequired,
+  t: PropTypes.object.isRequired,
 };
 
 const HomeScreen = () => {
   const router = useRouter();
-  const [filteredSurahs, setFilteredSurahs] = useState([]);
+  const navigation = useNavigation();
+  const { theme } = useTheme();
+  const { t, language, getChapterData } = useLanguage();
+  const [chapters, setChapters] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error] = useState(null);
   const [fontsLoaded] = useFonts({
@@ -69,12 +113,42 @@ const HomeScreen = () => {
 
   useEffect(() => {
     if (fontsLoaded) {
-      // Lazy load chapters data to prevent Metro freeze
-      const chapters = require('@/quran/chapters.json');
-      setFilteredSurahs(chapters);
+      // Load chapters data with language-specific translations
+      const chaptersData = getChapterData();
+      setChapters(chaptersData);
     }
     setLoading(false);
-  }, [fontsLoaded]);
+  }, [fontsLoaded, language, getChapterData]);
+
+  // Set up native search bar handler for Android
+  useLayoutEffect(() => {
+    if (Platform.OS === 'android') {
+      navigation.setOptions({
+        headerSearchBarOptions: {
+          placeholder: t.searchSurahs,
+          hideWhenScrolling: false,
+          autoCapitalize: 'none',
+          onChangeText: (event) => {
+            setSearchQuery(event.nativeEvent.text);
+          },
+        },
+      });
+    }
+  }, [navigation, t]);
+
+  // Filter surahs based on search query
+  const filteredSurahs = useMemo(() => {
+    if (!searchQuery.trim()) return chapters;
+
+    const query = searchQuery.toLowerCase();
+    return chapters.filter(
+      (surah) =>
+        surah.name.includes(query) ||
+        surah.transliteration.toLowerCase().includes(query) ||
+        surah.translation.toLowerCase().includes(query) ||
+        surah.id.toString() === query,
+    );
+  }, [searchQuery, chapters]);
 
   // Handler for surah press
   const handleSurahPress = useCallback(
@@ -97,9 +171,14 @@ const HomeScreen = () => {
   // Memoized render function to prevent unnecessary re-renders
   const renderItem = useCallback(
     ({ item }) => (
-      <SurahListItem item={item} onPress={handleSurahPress(item)} />
+      <SurahListItem
+        item={item}
+        onPress={handleSurahPress(item)}
+        theme={theme}
+        t={t}
+      />
     ),
-    [handleSurahPress],
+    [handleSurahPress, theme, t],
   );
 
   // Implement getItemLayout if all items have the same height
@@ -115,23 +194,32 @@ const HomeScreen = () => {
   // Handle loading and error states
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size='large' color='#333' />
-        <Text>Loading...</Text>
+      <View
+        style={[styles.loading, { backgroundColor: theme.colors.background }]}
+      >
+        <ActivityIndicator size='large' color={theme.colors.primary} />
+        <Text style={{ color: theme.colors.text }}>{t.loading}</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text>Error: {error.message}</Text>
+      <View
+        style={[
+          styles.errorContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
+        <Text style={{ color: theme.colors.text }}>Error: {error.message}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <FlatList
         data={filteredSurahs}
         keyExtractor={(item) => item.id.toString()}
@@ -153,11 +241,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
-    backgroundColor: '#fff',
   },
   searchBar: {
     height: 40,
-    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
@@ -169,12 +255,10 @@ const styles = StyleSheet.create({
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: 'rgba(0,0,0, .4)', // iOS
-    shadowOffset: { height: 1, width: 1 }, // iOS
-    shadowOpacity: 1, // iOS
-    shadowRadius: 1, // iOS
-    backgroundColor: '#fff',
-    elevation: 2, // Android
+    shadowOffset: { height: 1, width: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 1,
+    elevation: 2,
     borderRadius: 20,
     height: 100,
     margin: 5,
@@ -199,15 +283,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'black',
   },
   verseText: {
     fontSize: Platform.isPad ? 20 : 14,
-    color: '#333',
   },
   verseTextArabic: {
     fontSize: 20,
-    color: '#333',
     fontFamily: 'custom-font',
   },
   verseInfoContainer: {
@@ -217,7 +298,6 @@ const styles = StyleSheet.create({
   },
   verseCount: {
     fontSize: 10,
-    color: '#999',
   },
   loading: {
     flex: 1,

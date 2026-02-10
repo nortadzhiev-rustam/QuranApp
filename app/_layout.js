@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import CustomSplashScreen from '@/screens/CustomSplashScreen';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
 import 'react-native-gesture-handler';
 
@@ -22,11 +24,15 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen
-        name='(tabs)'
-        options={{ headerShown: false, animation: 'fade' }}
-      />
-    </Stack>
+    <LanguageProvider>
+      <ThemeProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name='(tabs)'
+            options={{ headerShown: false, animation: 'fade' }}
+          />
+        </Stack>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }

@@ -11,6 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useFonts } from 'expo-font';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const HomeScreen = ({ navigation }) => {
   const [surahs, setSurahs] = useState([]);
@@ -18,19 +19,19 @@ const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const { t, language, getChapterData } = useLanguage();
   const [fontsLoaded] = useFonts({
     'custom-font': require('../assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
 
-  const chapters = require('../quran/chapters.json');
-
   useEffect(() => {
     if (fontsLoaded) {
+      const chapters = getChapterData();
       setSurahs(chapters);
       setFilteredSurahs(chapters); // Initialize filteredSurahs with all chapters
     }
     setLoading(false);
-  }, [fontsLoaded]);
+  }, [fontsLoaded, language, getChapterData]);
 
   // Function to handle search input
   const handleSearch = (text) => {
@@ -93,12 +94,14 @@ const HomeScreen = ({ navigation }) => {
           </View>
           <View style={styles.verseInfoContainer}>
             <Text style={styles.verseTextArabic}>{item.name}</Text>
-            <Text style={styles.verseCount}>{item.total_verses} ayahs</Text>
+            <Text style={styles.verseCount}>
+              {item.total_verses} {t.ayahs}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
     ),
-    [navigation],
+    [navigation, t],
   );
 
   // Handle loading and error states

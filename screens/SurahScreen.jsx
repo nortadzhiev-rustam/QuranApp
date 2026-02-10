@@ -19,6 +19,8 @@ import Icon from 'react-native-vector-icons/FontAwesome6';
 import { Picker } from '@react-native-picker/picker';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
@@ -49,7 +51,13 @@ const calculateFontSize = (screenWidth) => {
 
 // Memoized VerseItem to prevent unnecessary re-renders
 const VerseItem = memo(
-  ({ item = {}, fontSize = 16, lineHeight = 1.5, isEnabled = false }) => {
+  ({
+    item = {},
+    fontSize = 16,
+    lineHeight = 1.5,
+    isEnabled = false,
+    theme,
+  }) => {
     if (item.id === 'bismillah') {
       return (
         <View style={styles.bismillahContainer}>
@@ -68,6 +76,7 @@ const VerseItem = memo(
             {
               fontSize: Platform.isPad ? fontSize * 0.8 : fontSize,
               lineHeight: Platform.isPad ? lineHeight * 0.8 : lineHeight,
+              color: theme.colors.text,
             },
           ]}
         >
@@ -84,6 +93,8 @@ const VerseItem = memo(
                   ? lineHeight * 0.6
                   : lineHeight * 0.5,
                 marginTop: 10,
+                color: theme.colors.textSecondary,
+                borderBottomColor: theme.colors.border,
               },
             ]}
           >
@@ -96,20 +107,21 @@ const VerseItem = memo(
 );
 
 // HeaderRight component for navigation bar
-const HeaderRight = ({ isOpen, toggleOpen }) => (
+const HeaderRight = ({ isOpen, toggleOpen, theme }) => (
   <TouchableOpacity style={{ marginRight: 10 }} onPress={toggleOpen}>
     <Icon
       name={isOpen ? 'chevron-up' : 'chevron-down'}
-      color='black'
+      color={theme.colors.text}
       size={20}
     />
   </TouchableOpacity>
 );
 
-// Main SurahScreen component
 const SurahScreen = ({ route, navigation }) => {
   const { surahNumber, hasBismillah, nameArabic, type, surahName } =
     route.params;
+  const { theme } = useTheme();
+  const { t, language, getQuranData } = useLanguage();
 
   // States
   const [verses, setVerses] = useState([]);
@@ -135,15 +147,23 @@ const SurahScreen = ({ route, navigation }) => {
   // Load Surah data
   useEffect(() => {
     if (fontsLoaded) {
-      // Lazy load quran data to prevent Metro freeze
-      const quranData = require('../quran/quran.json');
+      // Load quran data based on language
+      const quranData = getQuranData();
       let surah = quranData.find((item) => item.id === surahNumber);
+
+      // Get bismillah translation based on language
+      let bismillahTranslation =
+        'In the name of Allah, the Most Gracious, the Most Merciful';
+      if (language === 'tr') {
+        bismillahTranslation = "Rahman ve Rahim olan Allah'ın adıyla";
+      } else if (language === 'ru') {
+        bismillahTranslation = 'Во имя Аллаха, Милостивого, Милосердного';
+      }
 
       const bismillahItem = {
         id: 'bismillah',
-        text: 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
-        translation:
-          'In the name of Allah, the Most Gracious, the Most Merciful',
+        text: 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
+        translation: bismillahTranslation,
       };
 
       if (surah?.verses) {
@@ -160,7 +180,7 @@ const SurahScreen = ({ route, navigation }) => {
     }
 
     setLoading(false);
-  }, [surahNumber, fontsLoaded]);
+  }, [surahNumber, fontsLoaded, language, getQuranData]);
 
   // Update navigation header
   useEffect(() => {
@@ -168,10 +188,10 @@ const SurahScreen = ({ route, navigation }) => {
       headerBackButtonDisplayMode: 'minimal',
       title: surahName,
       headerRight: () => (
-        <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
+        <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} theme={theme} />
       ),
     });
-  }, [isOpen, navigation, surahName]);
+  }, [isOpen, navigation, surahName, theme]);
 
   // Load more verses for pagination
   const loadMoreVerses = () => {
@@ -192,16 +212,26 @@ const SurahScreen = ({ route, navigation }) => {
   // Loading and error views
   if (loading && currentPage === 1) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size='large' />
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
+        <ActivityIndicator size='large' color={theme.colors.primary} />
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text>{error}</Text>
+      <View
+        style={[
+          styles.errorContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
+        <Text style={{ color: theme.colors.text }}>{error}</Text>
       </View>
     );
   }
@@ -212,9 +242,19 @@ const SurahScreen = ({ route, navigation }) => {
     <View style={{ flex: 1 }}>
       {/* Translation toggle menu */}
       {isOpen && (
-        <View style={styles.headerContainer}>
+        <View
+          style={[
+            styles.headerContainer,
+            {
+              backgroundColor: theme.colors.background,
+              borderBottomColor: theme.colors.border,
+            },
+          ]}
+        >
           <View style={styles.translationToggle}>
-            <Text style={{ marginRight: 10 }}>Translation</Text>
+            <Text style={{ marginRight: 10, color: theme.colors.text }}>
+              {t.translation}
+            </Text>
             <Switch
               trackColor={{ false: '#767577', true: '#81b0ff' }}
               thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
@@ -230,14 +270,14 @@ const SurahScreen = ({ route, navigation }) => {
                 setSelectedValue(itemValue);
               }}
             >
-              <Picker.Item label='English' value='English' />
-              <Picker.Item label='Burmese' value='Burmese' />
-              <Picker.Item label='Turkish' value='Turkish' />
-              <Picker.Item label='Indonesian' value='Indonesian' />
+              <Picker.Item label={t.english} value='English' />
+              <Picker.Item label={t.burmese} value='Burmese' />
+              <Picker.Item label={t.turkish} value='Turkish' />
+              <Picker.Item label={t.indonesian} value='Indonesian' />
             </Picker>
           ) : (
             <TouchableOpacity onPress={toggleModal}>
-              <Text>{selectedValue}</Text>
+              <Text style={{ color: theme.colors.text }}>{selectedValue}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -273,6 +313,7 @@ const SurahScreen = ({ route, navigation }) => {
                 fontSize={fontSize}
                 lineHeight={lineHeight}
                 isEnabled={isEnabled}
+                theme={theme}
               />
             )}
             contentInsetAdjustmentBehavior='automatic'
@@ -284,7 +325,7 @@ const SurahScreen = ({ route, navigation }) => {
             scrollEventThrottle={16}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator size='small' color='#0000ff' />
+                <ActivityIndicator size='small' color={theme.colors.accent} />
               ) : null
             }
           />
@@ -293,7 +334,7 @@ const SurahScreen = ({ route, navigation }) => {
             style={{
               flex: 1,
               marginTop: isScrolled ? 0 : Platform.isPad ? 200 : 100,
-              backgroundColor: '#F9F6EF',
+              backgroundColor: theme.colors.background,
             }}
             onScroll={handleScroll}
             contentInsetAdjustmentBehavior='automatic'
@@ -317,6 +358,7 @@ const SurahScreen = ({ route, navigation }) => {
                   flexWrap: 'wrap',
                   padding: 10,
                   alignItems: 'justify',
+                  color: theme.colors.text,
                 },
               ]}
             >
@@ -339,13 +381,21 @@ const SurahScreen = ({ route, navigation }) => {
         )}
       </View>
       {/* Bottom navigation */}
-      <View style={styles.bottomNavigation}>
+      <View
+        style={[
+          styles.bottomNavigation,
+          {
+            backgroundColor: theme.colors.card,
+            borderTopColor: theme.colors.border,
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.navButton}>
-          <Icon name='play' size={25} color='black' />
+          <Icon name='play' size={25} color={theme.colors.text} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navButton}>
-          <Icon name='bookmark' size={25} color='black' />
+          <Icon name='bookmark' size={25} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -358,8 +408,15 @@ const SurahScreen = ({ route, navigation }) => {
           onSwipeComplete={toggleModal}
           style={styles.modal}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.label}>Choose a language:</Text>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.card },
+            ]}
+          >
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              {t.selectLanguage}
+            </Text>
             <Picker
               selectedValue={selectedValue}
               style={styles.picker}
@@ -368,10 +425,10 @@ const SurahScreen = ({ route, navigation }) => {
                 toggleModal();
               }}
             >
-              <Picker.Item label='English' value='English' />
-              <Picker.Item label='Burmese' value='Burmese' />
-              <Picker.Item label='Turkish' value='Turkish' />
-              <Picker.Item label='Indonesian' value='Indonesian' />
+              <Picker.Item label={t.english} value='English' />
+              <Picker.Item label={t.burmese} value='Burmese' />
+              <Picker.Item label={t.turkish} value='Turkish' />
+              <Picker.Item label={t.indonesian} value='Indonesian' />
             </Picker>
           </View>
         </Modal>
@@ -384,8 +441,15 @@ const SurahScreen = ({ route, navigation }) => {
           onSwipeComplete={toggleModal}
           style={styles.modal}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.label}>Choose a language:</Text>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.card },
+            ]}
+          >
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              {t.selectLanguage}
+            </Text>
             <Picker
               selectedValue={selectedValue}
               style={styles.picker}
@@ -394,10 +458,10 @@ const SurahScreen = ({ route, navigation }) => {
                 toggleModal();
               }}
             >
-              <Picker.Item label='English' value='English' />
-              <Picker.Item label='Burmese' value='Burmese' />
-              <Picker.Item label='Turkish' value='Turkish' />
-              <Picker.Item label='Indonesian' value='Indonesian' />
+              <Picker.Item label={t.english} value='English' />
+              <Picker.Item label={t.burmese} value='Burmese' />
+              <Picker.Item label={t.turkish} value='Turkish' />
+              <Picker.Item label={t.indonesian} value='Indonesian' />
             </Picker>
           </View>
         </Modal>
@@ -409,7 +473,6 @@ const SurahScreen = ({ route, navigation }) => {
 // Stylesheet for SurahScreen
 const styles = StyleSheet.create({
   flatlistContent: {
-    backgroundColor: '#F9F6EF',
     minHeight: '100%',
     marginTop: Platform.isPad ? 200 : 100,
     paddingBottom: Platform.isPad ? 200 : 100,
@@ -422,14 +485,12 @@ const styles = StyleSheet.create({
   },
   verseText: {
     fontFamily: 'uthmani-font',
-    color: '#333',
     writingDirection: 'rtl',
     textAlign: 'justify',
   },
   verseTranslation: {
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#000',
     borderStyle: 'dotted',
   },
   bismillahContainer: {
@@ -489,12 +550,10 @@ const styles = StyleSheet.create({
   },
   bottomNavigation: {
     height: 60,
-    backgroundColor: '#fff',
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
   },
   navButton: {
     alignItems: 'center',
@@ -509,12 +568,11 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   modalContent: {
-    backgroundColor: 'white',
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    width: width, // Adjust width to be smaller than full screen
-    height: '40%', // Set the height to 40% of the screen height
+    width: width,
+    height: '40%',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -527,12 +585,12 @@ const styles = StyleSheet.create({
     width: '40%',
   },
   headerContainer: {
-    backgroundColor: 'white',
     flexDirection: 'row',
     alignItems: 'center',
     maxHeight: 70,
     padding: 10,
     justifyContent: 'space-between',
+    borderBottomWidth: 1,
   },
   translationToggle: {
     flexDirection: 'row',

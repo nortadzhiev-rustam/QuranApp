@@ -12,8 +12,12 @@ import Icon from 'react-native-vector-icons/FontAwesome6';
 import { getBookmarks, removeBookmark } from '@/utils/bookmarks';
 import { List, Host, Label, Button } from '@expo/ui/swift-ui';
 import { listStyle, environment, tag } from '@expo/ui/swift-ui/modifiers';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 export default function BookmarksScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -62,16 +66,24 @@ export default function BookmarksScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Loading bookmarks...</Text>
+      <View
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+        <Text style={[styles.text, { color: theme.colors.text }]}>
+          {t.loadingBookmarks}
+        </Text>
       </View>
     );
   }
 
   if (bookmarks.length === 0) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.text}>No bookmarks yet</Text>
+      <View
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+        <Text style={[styles.text, { color: theme.colors.text }]}>
+          {t.noBookmarksYet}
+        </Text>
       </View>
     );
   }
@@ -82,11 +94,21 @@ export default function BookmarksScreen() {
         onPress={() => handleOpenSurah(item)}
         style={styles.bookmarkInfo}
       >
-        <Text style={styles.bookmarkTitle}>{item.surahName}</Text>
-        <Text style={styles.bookmarkSubtitle}>
-          {item.nameArabic} • Ayah {item.verseId}
+        <Text style={[styles.bookmarkTitle, { color: theme.colors.text }]}>
+          {item.surahName}
         </Text>
-        <Text style={styles.bookmarkVerse} numberOfLines={2}>
+        <Text
+          style={[
+            styles.bookmarkSubtitle,
+            { color: theme.colors.textSecondary },
+          ]}
+        >
+          {item.nameArabic} • {t.ayah} {item.verseId}
+        </Text>
+        <Text
+          style={[styles.bookmarkVerse, { color: theme.colors.text }]}
+          numberOfLines={2}
+        >
           {item.verseText}
         </Text>
       </TouchableOpacity>
@@ -94,7 +116,7 @@ export default function BookmarksScreen() {
         onPress={() => handleRemove(item.surahId, item.verseId)}
         accessibilityLabel='Remove bookmark'
       >
-        <Icon name='trash' size={18} color='#555' />
+        <Icon name='trash' size={18} color={theme.colors.textSecondary} />
       </TouchableOpacity>
     </View>
   );
@@ -107,12 +129,17 @@ export default function BookmarksScreen() {
             onPress={toggleEditMode}
             variant={editMode ? 'done' : 'plain'}
           >
-            {!editMode && <Stack.Toolbar.Label>Edit</Stack.Toolbar.Label>}
+            {!editMode && <Stack.Toolbar.Label>{t.edit}</Stack.Toolbar.Label>}
             {editMode && <Stack.Toolbar.Icon sf='checkmark' />}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
 
-        <Host style={styles.hostContainer}>
+        <Host
+          style={[
+            styles.hostContainer,
+            { backgroundColor: theme.colors.background },
+          ]}
+        >
           <List
             modifiers={[
               listStyle('plain'),
@@ -123,7 +150,7 @@ export default function BookmarksScreen() {
               {bookmarks.map((item, index) => (
                 <Button key={index} onPress={() => handleOpenSurah(item)}>
                   <Label
-                    title={`${item.surahName} • Ayah ${item.verseId}`}
+                    title={`${item.surahName} • ${t.ayah} ${item.verseId}`}
                     onPress={() => handleOpenSurah(item)}
                     modifiers={[tag(`${item.surahId}:${item.verseId}`)]}
                   />
@@ -138,11 +165,19 @@ export default function BookmarksScreen() {
 
   return (
     <FlatList
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       data={bookmarks}
       keyExtractor={(item) => `${item.surahId}:${item.verseId}`}
       renderItem={({ item }) => renderRow(item)}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-      contentContainerStyle={styles.listContent}
+      ItemSeparatorComponent={() => (
+        <View
+          style={[styles.separator, { backgroundColor: theme.colors.border }]}
+        />
+      )}
+      contentContainerStyle={[
+        styles.listContent,
+        { backgroundColor: theme.colors.background },
+      ]}
       contentInsetAdjustmentBehavior='automatic'
     />
   );
@@ -151,21 +186,17 @@ export default function BookmarksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     padding: 16,
     justifyContent: 'center',
     alignItems: 'center',
-
   },
   hostContainer: {
     flex: 1,
-    backgroundColor: '#fff',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   text: {
     fontSize: 18,
-    color: '#333',
   },
   listContent: {
     paddingBottom: 16,
@@ -184,20 +215,16 @@ const styles = StyleSheet.create({
   bookmarkTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#222',
   },
   bookmarkSubtitle: {
     fontSize: 14,
-    color: '#666',
     marginTop: 4,
   },
   bookmarkVerse: {
     fontSize: 13,
-    color: '#444',
     marginTop: 6,
   },
   separator: {
     height: 1,
-    backgroundColor: '#eee',
   },
 });

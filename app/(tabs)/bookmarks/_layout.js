@@ -1,19 +1,19 @@
 import { Stack } from 'expo-router';
-import {DynamicColorIOS, Platform} from 'react-native';
-
+import { DynamicColorIOS, Platform } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 export default function Layout() {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   return (
     <Stack
       screenOptions={{
         headerShown: true,
-        title: 'Bookmarks',
+        title: t.bookmarks,
         headerTransparent: Platform.OS === 'ios',
-        headerTintColor: Platform.OS==='ios'?DynamicColorIOS({
-          light: '#03232c',
-          dark: '#fff',
-        }): 'auto',
+        headerTintColor: theme.colors.text,
         headerStyle: {
-          backgroundColor: Platform.OS==='ios'?'transparent': '#fff',
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
         },
         headerTitleStyle: {
           fontWeight: 'bold',

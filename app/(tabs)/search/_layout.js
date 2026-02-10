@@ -1,15 +1,17 @@
 import { Stack } from 'expo-router';
 import { Platform, useColorScheme } from 'react-native';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SearchLayot() {
   const colorScheme = useColorScheme();
+  const { t } = useLanguage();
 
   return (
     <Stack
       screenOptions={{
         headerShown: true,
         headerTransparent: Platform.OS === 'ios',
-        headerBlurEffect: Platform.OS === 'ios' ? 'systemMaterial' : undefined,
+        headerBlurEffect: 'none',
         headerBackVisible: true,
         headerBackButtonDisplayMode: 'minimal',
         headerStyle:
@@ -24,11 +26,12 @@ export default function SearchLayot() {
       <Stack.Screen
         name='index'
         options={{
-          title: 'Search',
+          title: t.search,
           headerSearchBarOptions: {
             placement: 'automatic',
-            placeholder: 'Search',
-            onChangeText: () => {},
+            placeholder: t.search,
+            hideWhenScrolling: false,
+            autoCapitalize: 'none',
           },
         }}
       />

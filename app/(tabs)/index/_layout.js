@@ -1,38 +1,49 @@
 import { Stack } from 'expo-router';
-import {DynamicColorIOS, Platform} from 'react-native';
-
+import { DynamicColorIOS, Platform } from 'react-native';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { MaterialIcons } from 'react-native-vector-icons';
 export default function Layout() {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-        headerBackTitleVisible: false,
-        headerTransparent: Platform.OS === 'ios',
-        headerTintColor: Platform.OS==='ios'?DynamicColorIOS({
-          light: '#03232c',
-          dark: '#fff',
-        }): 'auto',
-        headerStyle: {
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
-        },
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-        headerBlurEffect: 'none',
-      }}
-    >
-      <Stack.Screen
-        name='index'
-        options={{
-          title: "Al-Qur'an",
+    <ThemeProvider>
+      <Stack
+        screenOptions={{
+          headerShown: true,
+          headerBackTitleVisible: false,
+          headerTransparent: Platform.OS === 'ios',
+          headerTintColor: theme.colors.text,
+
+          headerStyle: {
+            backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
+          },
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerBlurEffect: 'none',
         }}
-      />
-      <Stack.Screen
-        name='surah/[id]'
-        options={{
-          title: 'Surah',
-        }}
-      />
-    </Stack>
+      >
+        <Stack.Screen
+          name='index'
+          options={{
+            title: t.alQuran,
+            ...(Platform.OS === 'android' && {
+              headerSearchBarOptions: {
+                placeholder: t.searchSurahs,
+                hideWhenScrolling: false,
+                autoCapitalize: 'none',
+              },
+            }),
+          }}
+        />
+        <Stack.Screen
+          name='surah/[id]'
+          options={{
+            title: t.surah,
+          }}
+        />
+      </Stack>
+    </ThemeProvider>
   );
 }

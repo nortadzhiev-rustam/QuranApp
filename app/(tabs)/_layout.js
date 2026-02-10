@@ -1,8 +1,11 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { TabBarContext } from '@/contexts/TabBarContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useState } from 'react';
+import { Platform } from 'react-native';
 export default function TabsLayout() {
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <TabBarContext value={{ setIsTabBarHidden }}>
@@ -12,26 +15,35 @@ export default function TabsLayout() {
         disableTransparentOnScrollEdge
       >
         <NativeTabs.Trigger name='index'>
-          <NativeTabs.Trigger.Label>Quran</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{t.quran}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'book', selected: 'book.fill' }}
             md='menu_book'
           />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name='bookmarks'>
-          <NativeTabs.Trigger.Label>Bookmarks</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{t.bookmarks}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'bookmark', selected: 'bookmark.fill' }}
             md='bookmark'
           />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name='search' role='search'>
-          <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger name='settings'>
+          <NativeTabs.Trigger.Label>{t.settings}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
-            sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }}
-            md='search'
+            sf={{ default: 'gearshape', selected: 'gearshape.fill' }}
+            md='settings'
           />
         </NativeTabs.Trigger>
+        {Platform.OS === 'ios' && (
+          <NativeTabs.Trigger name='search' role='search'>
+            <NativeTabs.Trigger.Label>{t.search}</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Icon
+              sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }}
+              md='search'
+            />
+          </NativeTabs.Trigger>
+        )}
       </NativeTabs>
     </TabBarContext>
   );
