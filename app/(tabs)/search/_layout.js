@@ -32,6 +32,7 @@ export default function SearchLayot() {
             placeholder: t.search,
             hideWhenScrolling: false,
             autoCapitalize: 'none',
+            autoFocus: true,
           },
         }}
       />

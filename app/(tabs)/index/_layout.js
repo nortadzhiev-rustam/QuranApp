@@ -33,6 +33,7 @@ export default function Layout() {
                 placeholder: t.searchSurahs,
                 hideWhenScrolling: false,
                 autoCapitalize: 'none',
+                autoFocus: true,
               },
             }),
           }}
