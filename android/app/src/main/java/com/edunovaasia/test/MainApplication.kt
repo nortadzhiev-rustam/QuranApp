@@ -1,4 +1,4 @@
-package com.quranapp.test
+package com.edunovaasia.test
 
 import android.app.Application
 import android.content.res.Configuration

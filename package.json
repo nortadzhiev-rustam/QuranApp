@@ -10,6 +10,7 @@
     "device": "npx expo run:ios --device"
   },
   "dependencies": {
+    "@expo/log-box": "55.0.5",
     "@expo/metro-runtime": "~55.0.4",
     "@expo/ui": "~55.0.0-preview.4",
     "@react-native-async-storage/async-storage": "2.2.0",
