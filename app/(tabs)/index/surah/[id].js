@@ -37,6 +37,7 @@ import { TabBarContext } from '@/contexts/TabBarContext';
 import { getBookmarks, toggleVerseBookmark } from '@/utils/bookmarks';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
 

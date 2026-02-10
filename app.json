@@ -13,7 +13,7 @@
       "image": "./assets/AppIcon.png"
     },
     "ios": {
-      "bundleIdentifier": "com.quranapp.test",
+      "bundleIdentifier": "com.edunovaasia.test",
       "supportsTablet": true,
       "icon": "./assets/AppIcon.icon",
       "appleTeamId": "28QUF89Z2V"
@@ -23,15 +23,16 @@
         "foregroundImage": "./assets/AppIcon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.quranapp.test"
+      "package": "com.edunovaasia.test"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "ba55f53b-97c9-47b4-82c1-39ef4372474f"
+        "projectId": "d5987528-75d3-45a0-9d37-708711944cce"
       }
-    }
+    },
+    "owner": "rustam-nortadzhiev"
   }
 }

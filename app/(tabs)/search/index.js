@@ -22,6 +22,7 @@ import {
 } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFonts } from 'expo-font';
 
 export default function SearchIndex() {
   const router = useRouter();
@@ -33,7 +34,9 @@ export default function SearchIndex() {
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState([]);
   const [chapters, setChapters] = useState([]);
-
+  const [fontsLoaded] = useFonts({
+    'uthmani-font': require('@/assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
+  });
   useEffect(() => {
     loadBookmarks();
     // Load chapters based on language
@@ -290,6 +293,7 @@ export default function SearchIndex() {
 
   return (
     <SectionList
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       sections={sections}
       renderItem={renderItem}
       renderSectionHeader={renderSectionHeader}
@@ -299,7 +303,7 @@ export default function SearchIndex() {
       ListEmptyComponent={renderEmptyState}
       contentContainerStyle={styles.listContent}
       keyboardShouldPersistTaps='handled'
-      stickySectionHeadersEnabled={true}
+      stickySectionHeadersEnabled={false}
       contentInsetAdjustmentBehavior='automatic'
     />
   );
@@ -342,6 +346,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   surahArabic: {
+    fontFamily: 'uthmani-font',
     fontSize: 20,
     textAlign: 'right',
     marginBottom: 4,

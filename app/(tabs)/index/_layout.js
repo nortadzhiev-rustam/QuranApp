@@ -14,7 +14,7 @@ export default function Layout() {
           headerBackTitleVisible: false,
           headerTransparent: Platform.OS === 'ios',
           headerTintColor: theme.colors.text,
-
+          headerLargeTitleEnabled: Platform.OS === 'ios',
           headerStyle: {
             backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
           },
@@ -41,6 +41,7 @@ export default function Layout() {
           name='surah/[id]'
           options={{
             title: t.surah,
+            headerLargeTitleEnabled: false,
           }}
         />
       </Stack>

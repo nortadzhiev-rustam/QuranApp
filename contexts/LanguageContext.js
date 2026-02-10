@@ -27,6 +27,7 @@ const translations = {
     language: 'Language',
     selectLanguage: 'Select Language',
     startTypingToSearch: 'Start typing to search...',
+    customizeYourExperience: 'Customize your app experience',
     // BookmarksScreen
     loadingBookmarks: 'Loading bookmarks...',
     noBookmarksYet: 'No bookmarks yet',
@@ -60,7 +61,7 @@ const translations = {
     // HomeScreen
     ayahs: 'аяты',
     searchSurahs: 'Поиск сур',
-    alQuran: 'Коран',
+    alQuran: 'Священный Коран',
     loading: 'Загрузка...',
 
     // SettingsScreen
@@ -74,7 +75,7 @@ const translations = {
     autoFollowingSystem: 'Авто (следует системе)',
     language: 'Язык',
     selectLanguage: 'Выберите язык',
-
+    customizeYourExperience: 'Настройте приложение под себя',
     // BookmarksScreen
     loadingBookmarks: 'Загрузка закладок...',
     noBookmarksYet: 'Пока нет закладок',
@@ -108,7 +109,7 @@ const translations = {
     // HomeScreen
     ayahs: 'ayet',
     searchSurahs: 'Sure ara',
-    alQuran: 'Kuran',
+    alQuran: 'Kuranı Kerim',
     loading: 'Yükleniyor...',
 
     // SettingsScreen
@@ -124,6 +125,7 @@ const translations = {
     selectLanguage: 'Dil Seçin',
     noResultsFound: 'Sonuç bulunamadı',
     startTypingToSearch: 'Aramaya başlamak için yazın...',
+    customizeYourExperience: 'Uygulama deneyiminizi özelleştirin',
     // BookmarksScreen
     loadingBookmarks: 'ayraç yükleniyor...',
     noBookmarksYet: 'Henüz ayraç yok',

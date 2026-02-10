@@ -217,23 +217,20 @@ const HomeScreen = () => {
   }
 
   return (
-    <View
+    <FlatList
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <FlatList
-        data={filteredSurahs}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        getItemLayout={getItemLayout}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        windowSize={5}
-        removeClippedSubviews={true}
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior='automatic'
-      />
-    </View>
+      data={filteredSurahs}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={renderItem}
+      getItemLayout={getItemLayout}
+      initialNumToRender={10}
+      maxToRenderPerBatch={10}
+      updateCellsBatchingPeriod={50}
+      windowSize={5}
+      removeClippedSubviews={true}
+      showsVerticalScrollIndicator={false}
+      contentInsetAdjustmentBehavior='automatic'
+    />
   );
 };
 

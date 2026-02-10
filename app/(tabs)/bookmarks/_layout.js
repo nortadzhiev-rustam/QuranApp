@@ -12,6 +12,7 @@ export default function Layout() {
         title: t.bookmarks,
         headerTransparent: Platform.OS === 'ios',
         headerTintColor: theme.colors.text,
+        headerLargeTitleEnabled: Platform.OS === 'ios',
         headerStyle: {
           backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
         },
