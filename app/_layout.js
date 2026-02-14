@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import CustomSplashScreen from '@/screens/CustomSplashScreen';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { TajweedProvider } from '@/contexts/TajweedContext';
 
 import 'react-native-gesture-handler';
 
@@ -26,12 +27,14 @@ export default function RootLayout() {
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen
-            name='(tabs)'
-            options={{ headerShown: false, animation: 'fade' }}
-          />
-        </Stack>
+        <TajweedProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+              name='(tabs)'
+              options={{ headerShown: false, animation: 'fade' }}
+            />
+          </Stack>
+        </TajweedProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

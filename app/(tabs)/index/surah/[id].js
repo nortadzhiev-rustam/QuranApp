@@ -37,6 +37,8 @@ import { TabBarContext } from '@/contexts/TabBarContext';
 import { getBookmarks, toggleVerseBookmark } from '@/utils/bookmarks';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTajweed } from '@/contexts/TajweedContext';
+import TajweedText from '@/components/TajweedText';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
@@ -65,68 +67,76 @@ const calculateFontSize = (screenWidth) => {
   return { fontSize, lineHeight };
 };
 
-// Memoized VerseItem to prevent unnecessary re-renders
-const VerseItem = memo(
-  ({
-    item = {},
-    fontSize = 16,
-    lineHeight = 1.5,
-    isEnabled = false,
-    isBookmarked = false,
-    onLongPress,
-    theme,
-  }) => {
-    if (item.id === 'bismillah') {
-      return (
-        <View style={styles.bismillahContainer}>
-          <Text style={styles.bismillahText}>
-            {Platform.OS === 'ios' ? '\uFDFD' : '﷽'}
-          </Text>
-        </View>
-      );
-    }
-
+// VerseItem component (memo removed for Tajweed context updates)
+const VerseItem = ({
+  item = {},
+  fontSize = 16,
+  lineHeight = 1.5,
+  isEnabled = false,
+  isBookmarked = false,
+  onLongPress,
+  theme,
+}) => {
+  if (item.id === 'bismillah') {
     return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onLongPress={onLongPress}
-        style={styles.verseContainer}
+      <View style={styles.bismillahContainer}>
+        <TajweedText
+          text={
+            Platform.OS === 'ios'
+              ? '\uFDFD'
+              : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'
+          }
+          style={styles.bismillahText}
+          baseColor={theme.colors.text}
+        />
+      </View>
+    );
+  }
+
+  const verseTextWithNumber = `${item.text} ${convertToArabicNumerals(item.id)}`;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onLongPress={onLongPress}
+      style={styles.verseContainer}
+    >
+      <TajweedText
+        text={item.text}
+        style={[
+          styles.verseText,
+          {
+            fontSize: Platform.isPad ? fontSize * 0.8 : fontSize,
+            lineHeight: Platform.isPad ? lineHeight * 0.8 : lineHeight,
+            textAlign: isEnabled ? 'right' : 'justify',
+          },
+        ]}
+        baseColor={isBookmarked ? '#D7233C' : theme.colors.text}
       >
+        <Text style={{ color: isBookmarked ? '#D7233C' : theme.colors.text }}>
+          {' '}
+          {convertToArabicNumerals(item.id)}
+        </Text>
+      </TajweedText>
+
+      {isEnabled && (
         <Text
           style={[
-            styles.verseText,
+            styles.verseTranslation,
             {
-              fontSize: Platform.isPad ? fontSize * 0.8 : fontSize,
-              lineHeight: Platform.isPad ? lineHeight * 0.8 : lineHeight,
-              textAlign: isEnabled ? 'right' : 'justify',
-              color: isBookmarked ? '#D7233C' : theme.colors.text,
+              fontSize: Platform.isPad ? fontSize * 0.4 : fontSize * 0.6,
+              lineHeight: Platform.isPad ? lineHeight * 0.6 : lineHeight * 0.5,
+              marginTop: 10,
+              color: theme.colors.textSecondary,
             },
           ]}
         >
-          {item.text} {convertToArabicNumerals(item.id)}
+          {item.translation}
         </Text>
-
-        {isEnabled && (
-          <Text
-            style={[
-              styles.verseTranslation,
-              {
-                fontSize: Platform.isPad ? fontSize * 0.4 : fontSize * 0.6,
-                lineHeight: Platform.isPad
-                  ? lineHeight * 0.6
-                  : lineHeight * 0.5,
-                marginTop: 10,
-                color: theme.colors.textSecondary,
-              },
-            ]}
-          >
-            {item.translation}
-          </Text>
-        )}
-      </TouchableOpacity>
-    );
-  },
-);
+      )}
+    </TouchableOpacity>
+  );
+};
 
 // HeaderRight component for navigation bar
 const HeaderRight = ({ isOpen, toggleOpen }) => (
@@ -171,6 +181,7 @@ const SurahScreen = () => {
   const [currentSurahName, setCurrentSurahName] = useState(surahName); // Track surah name based on language
   const [translationLanguage, setTranslationLanguage] = useState(language); // Separate translation language
   const { setIsTabBarHidden } = use(TabBarContext);
+  const { tajweedEnabled } = useTajweed();
   // Font loading
   const [fontsLoaded] = useFonts({
     'uthmani-font': require('@/assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
@@ -593,6 +604,8 @@ const SurahScreen = () => {
               onScroll={handleScroll}
               contentInsetAdjustmentBehavior='automatic'
               showsVerticalScrollIndicator={false}
+              removeClippedSubviews={true}
+              scrollEventThrottle={16}
             >
               {/* Render Bismillah as a block at the top */}
               {verses.some((verse) => verse.id === 'bismillah') && (
@@ -633,27 +646,31 @@ const SurahScreen = () => {
                             inlineTextOffsetRef.current +
                             event.nativeEvent.layout.y;
                           verseOffsetsRef.current[Number(verse.id)] = offset;
-                          if (
-                            Number.isFinite(verseParam) &&
-                            Number(verse.id) === verseParam &&
-                            inlineScrollRef.current
-                          ) {
-                            inlineScrollRef.current.scrollTo({
-                              y: offset,
-                              animated: true,
-                            });
-                          }
                         }}
                         onLongPress={() => handleVerseLongPress(verse)}
-                        style={{
-                          color: bookmarkedVerseIds[verse.id]
-                            ? theme.mode === 'dark'
-                              ? theme.colors.text
-                              : '#D7233C'
-                            : theme.colors.text,
-                        }}
                       >
-                        {verse.text} {convertToArabicNumerals(verse.id)}{' '}
+                        <TajweedText
+                          text={verse.text}
+                          baseColor={
+                            bookmarkedVerseIds[verse.id]
+                              ? theme.mode === 'dark'
+                                ? theme.colors.text
+                                : '#D7233C'
+                              : theme.colors.text
+                          }
+                        />
+                        <Text
+                          style={{
+                            color: bookmarkedVerseIds[verse.id]
+                              ? theme.mode === 'dark'
+                                ? theme.colors.text
+                                : '#D7233C'
+                              : theme.colors.text,
+                          }}
+                        >
+                          {' '}
+                          {convertToArabicNumerals(verse.id)}{' '}
+                        </Text>
                       </Text>
                     ) : null,
                   )}
