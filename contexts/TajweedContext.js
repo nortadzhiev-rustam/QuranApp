@@ -7,8 +7,8 @@ const TAJWEED_STORAGE_KEY = 'tajweed_enabled';
 const TAWAFUQ_STORAGE_KEY = 'tawafuq_enabled';
 
 export const TajweedProvider = ({ children }) => {
-  const [tajweedEnabled, setTajweedEnabled] = useState(false);
-  const [tawafuqEnabled, setTawafuqEnabled] = useState(false);
+  const [tajweedEnabled, setTajweedEnabled] = useState(true);
+  const [tawafuqEnabled, setTawafuqEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   // Load settings from storage on mount

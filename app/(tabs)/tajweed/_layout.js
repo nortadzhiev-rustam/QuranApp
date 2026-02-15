@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
-import { Platform, Pressable, Text } from 'react-native';
+
+import { Platform, Pressable } from 'react-native';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'expo-router';
@@ -31,7 +32,7 @@ export default function Layout() {
         <Stack.Screen
           name='index'
           options={{
-            title: t.alQuran,
+            title: t.tajweedGuide || 'Tajweed Guide',
             headerRight:
               Platform.OS === 'android'
                 ? () => (
@@ -47,35 +48,7 @@ export default function Layout() {
                     </Pressable>
                   )
                 : undefined,
-            ...(Platform.OS === 'android' && {
-              headerSearchBarOptions: {
-                placeholder: t.searchSurahs,
-                hideWhenScrolling: false,
-                autoCapitalize: 'none',
-                autoFocus: true,
-              },
-            }),
           }}
-        >
-          {Platform.OS === 'ios' && (
-            <Stack.Toolbar placement='right'>
-              <Stack.Toolbar.Button
-                icon='gear'
-                onPress={() => router.push('/settings')}
-              />
-            </Stack.Toolbar>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name='surah/[id]'
-          options={{
-            title: '',
-            headerLargeTitleEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name='settings'
-          options={{ title: t.settings, headerLargeTitleEnabled: false }}
         />
       </Stack>
     </ThemeProvider>
@@ -84,11 +57,6 @@ export default function Layout() {
 
 const styles = {
   settingsButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    padding: 8,
   },
-  settingsText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-};
+};      

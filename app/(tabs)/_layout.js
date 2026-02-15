@@ -32,11 +32,13 @@ export default function TabsLayout() {
               md='bookmark'
             />
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger name='settings'>
-            <NativeTabs.Trigger.Label>{t.settings}</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger name='tajweed'>
+            <NativeTabs.Trigger.Label>
+              {t.tajweedGuide || 'Tajweed Guide'}
+            </NativeTabs.Trigger.Label>
             <NativeTabs.Trigger.Icon
-              sf={{ default: 'gearshape', selected: 'gearshape.fill' }}
-              md='settings'
+              sf={{ default: 'book.closed', selected: 'book.closed.fill' }}
+              md='auto_stories'
             />
           </NativeTabs.Trigger>
           {Platform.OS === 'ios' && (

@@ -78,7 +78,8 @@ const QAMARIYYAH_LETTERS = [
 // Qalqala letters
 const QALQALA_LETTERS = ['ق', 'ط', 'ب', 'ج', 'د'];
 
-// Ikhfa letters
+// Ikhfa letters (15 letters total)
+// Ikhfa occurs when Noon Saakin or Tanween is followed by these letters
 const IKHFA_LETTERS = [
   'ت',
   'ث',
@@ -90,6 +91,7 @@ const IKHFA_LETTERS = [
   'ش',
   'ص',
   'ض',
+  'ط', // Added - this was missing
   'ظ',
   'ف',
   'ق',

@@ -67,7 +67,14 @@ export default function BookmarksScreen() {
   if (loading) {
     return (
       <View
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.colors.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+        ]}
       >
         <Text style={[styles.text, { color: theme.colors.text }]}>
           {t.loadingBookmarks}
@@ -79,7 +86,14 @@ export default function BookmarksScreen() {
   if (bookmarks.length === 0) {
     return (
       <View
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.colors.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+        ]}
       >
         <Text style={[styles.text, { color: theme.colors.text }]}>
           {t.noBookmarksYet}
@@ -187,8 +201,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   hostContainer: {
     flex: 1,
@@ -199,6 +211,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   listContent: {
+    flex: 1,
     paddingBottom: 16,
   },
   bookmarkRow: {
