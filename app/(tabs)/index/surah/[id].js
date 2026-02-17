@@ -111,7 +111,7 @@ const VerseItem = memo(
             {
               fontSize: Platform.isPad ? fontSize * 0.8 : fontSize,
               lineHeight: Platform.isPad ? lineHeight * 0.8 : lineHeight,
-              textAlign: isEnabled ? 'right' : 'justify',
+              textAlign: 'justify',
             },
           ]}
           baseColor={isBookmarked ? '#D7233C' : theme.colors.text}
@@ -133,6 +133,7 @@ const VerseItem = memo(
                   : lineHeight * 0.5,
                 marginTop: 10,
                 color: theme.colors.textSecondary,
+                textAlign: 'justify',
               },
             ]}
           >
@@ -799,7 +800,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F6EF',
     minHeight: '100%',
     paddingBottom: Platform.isPad ? 200 : 100,
-    paddingTop: 10,
   },
   verseContainer: {
     width: width * 0.95,
