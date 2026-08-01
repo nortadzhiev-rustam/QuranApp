@@ -20,7 +20,6 @@ import {
   Platform,
   Image,
   ImageBackground,
-  ScrollView,
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome6';
@@ -145,6 +144,59 @@ const VerseItem = memo(
   },
 );
 
+// Number of verses rendered inside a single inline paragraph block.
+// Verses flow together within a block; blocks are what the list virtualizes,
+// so opening a surah only lays out the blocks that are on screen.
+const INLINE_CHUNK_SIZE = 10;
+
+// InlineVerseChunk - one paragraph block of the continuous (translation off) view.
+// Memoized so scrolling only mounts/lays out the blocks near the viewport.
+const InlineVerseChunk = memo(
+  ({
+    verses,
+    fontSize,
+    lineHeight,
+    theme,
+    bookmarkedVerseIds,
+    onVerseLongPress,
+  }) => (
+    <Text
+      style={[
+        styles.verseText,
+        {
+          fontSize,
+          lineHeight,
+          paddingHorizontal: 10,
+          color: theme.colors.text,
+        },
+      ]}
+    >
+      {verses.map((verse) => {
+        const verseColor = bookmarkedVerseIds[verse.id]
+          ? theme.mode === 'dark'
+            ? theme.colors.text
+            : '#D7233C'
+          : theme.colors.text;
+
+        return (
+          <Text
+            key={verse.id.toString()}
+            onLongPress={() => onVerseLongPress(verse)}
+          >
+            <TajweedText text={verse.text} baseColor={verseColor} />
+            <Text style={{ color: verseColor }}>
+              {' '}
+              {convertToArabicNumerals(verse.id)}{' '}
+            </Text>
+          </Text>
+        );
+      })}
+    </Text>
+  ),
+);
+
+InlineVerseChunk.displayName = 'InlineVerseChunk';
+
 // HeaderRight component for navigation bar
 const HeaderRight = ({ isOpen, toggleOpen }) => (
   <TouchableOpacity style={{}} onPress={toggleOpen}>
@@ -163,11 +215,7 @@ const SurahScreen = () => {
   const params = useLocalSearchParams();
   const router = useRouter();
   const listRef = useRef(null);
-  const inlineScrollRef = useRef(null);
-  const inlineTextOffsetRef = useRef(0);
-  const verseOffsetsRef = useRef({});
-  const pendingVerseScrollRef = useRef(null);
-  const hasAutoScrolledToVerseRef = useRef(false);
+  const inlineListRef = useRef(null);
   const surahNumber = Number.parseInt(params.id, 10);
   const hasBismillah =
     params.hasBismillah === 'true' || params.hasBismillah === true;
@@ -180,8 +228,6 @@ const SurahScreen = () => {
   const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1); // Pagination
-  const [loadingMore] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false); // Translation switch
   const [isOpen, setIsOpen] = useState(false); // Translation toggle menu
   const [bookmarkedVerseIds, setBookmarkedVerseIds] = useState({});
@@ -199,10 +245,13 @@ const SurahScreen = () => {
   const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
   const toggleOpen = () => setIsOpen((previousState) => !previousState);
 
-  useFocusEffect(() => {
-    setIsTabBarHidden(true);
-    return () => setIsTabBarHidden(false);
-  });
+  // Memoized so the effect runs on focus/blur only, not on every render
+  useFocusEffect(
+    useCallback(() => {
+      setIsTabBarHidden(true);
+      return () => setIsTabBarHidden(false);
+    }, [setIsTabBarHidden]),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -217,7 +266,15 @@ const SurahScreen = () => {
         });
 
       if (isMounted) {
-        setBookmarkedVerseIds(next);
+        // Keep the previous object when nothing changed - a fresh object here
+        // would invalidate the memoized verse blocks and re-render the surah.
+        setBookmarkedVerseIds((prev) => {
+          const nextIds = Object.keys(next);
+          const isUnchanged =
+            nextIds.length === Object.keys(prev).length &&
+            nextIds.every((verseId) => prev[verseId]);
+          return isUnchanged ? prev : next;
+        });
       }
     };
 
@@ -263,11 +320,7 @@ const SurahScreen = () => {
         }
         setVerses(surah.verses);
         setCurrentSurahName(surah.translation || surahName); // Update surah name based on language
-
-        // Allow a brief moment for initial render before hiding loading
-        setTimeout(() => {
-          setLoading(false);
-        }, 100);
+        setLoading(false);
       } else {
         setError('Surah not found');
         setLoading(false);
@@ -281,79 +334,66 @@ const SurahScreen = () => {
     hasBismillah,
   ]);
 
-  useEffect(() => {
-    verseOffsetsRef.current = {};
-    inlineTextOffsetRef.current = 0;
-    hasAutoScrolledToVerseRef.current = false;
-    pendingVerseScrollRef.current = null;
-  }, [surahNumber, translationLanguage]);
+  // Group verses into paragraph blocks for the continuous reading view.
+  // Depends only on `verses`, so bookmarking or theming never rebuilds it.
+  const inlineChunks = useMemo(() => {
+    const readableVerses = verses.filter((verse) => verse.id !== 'bismillah');
+    const chunks = [];
 
-  useEffect(() => {
-    if (!Number.isFinite(verseParam)) {
-      return;
+    for (let i = 0; i < readableVerses.length; i += INLINE_CHUNK_SIZE) {
+      chunks.push(readableVerses.slice(i, i + INLINE_CHUNK_SIZE));
     }
 
-    hasAutoScrolledToVerseRef.current = false;
-    pendingVerseScrollRef.current = verseParam;
+    return chunks;
+  }, [verses]);
+
+  useEffect(() => {
+    if (!Number.isFinite(verseParam) || verses.length === 0) {
+      return;
+    }
 
     if (isEnabled) {
       const index = verses.findIndex(
         (verse) => Number(verse.id) === verseParam,
       );
-      if (index > -1 && listRef.current) {
-        listRef.current.scrollToIndex({ index, animated: true });
-        hasAutoScrolledToVerseRef.current = true;
-        pendingVerseScrollRef.current = null;
+      if (index > -1) {
+        listRef.current?.scrollToIndex({ index, animated: true });
       }
       return;
     }
 
-    const tryInlineScroll = () => {
-      const inlineOffset = verseOffsetsRef.current[verseParam];
-      if (Number.isFinite(inlineOffset) && inlineScrollRef.current) {
-        inlineScrollRef.current.scrollTo({
-          y: Math.max(0, inlineOffset - 24),
-          animated: true,
-        });
-        hasAutoScrolledToVerseRef.current = true;
-        pendingVerseScrollRef.current = null;
-        return true;
-      }
-      return false;
-    };
-
-    if (tryInlineScroll()) {
-      return;
+    // Continuous mode scrolls to the block holding the verse
+    const chunkIndex = inlineChunks.findIndex((chunk) =>
+      chunk.some((verse) => Number(verse.id) === verseParam),
+    );
+    if (chunkIndex > -1) {
+      inlineListRef.current?.scrollToIndex({
+        index: chunkIndex,
+        animated: true,
+      });
     }
-
-    let attempts = 0;
-    const retryInterval = setInterval(() => {
-      if (hasAutoScrolledToVerseRef.current || tryInlineScroll()) {
-        clearInterval(retryInterval);
-        return;
-      }
-
-      attempts += 1;
-      if (attempts >= 25) {
-        clearInterval(retryInterval);
-      }
-    }, 100);
-
-    return () => clearInterval(retryInterval);
-  }, [verseParam, verses, isEnabled]);
+  }, [verseParam, verses, isEnabled, inlineChunks]);
 
   const handleScrollToIndexFailed = useCallback((info) => {
-    if (!listRef.current) {
-      return;
-    }
     const offset = info.averageItemLength * info.index;
-    listRef.current.scrollToOffset({ offset, animated: true });
+    listRef.current?.scrollToOffset({ offset, animated: true });
     setTimeout(() => {
       listRef.current?.scrollToIndex({ index: info.index, animated: true });
     }, 80);
   }, []);
 
-  const handleVerseLongPress = async (verse) => {
+  const handleInlineScrollToIndexFailed = useCallback((info) => {
+    const offset = info.averageItemLength * info.index;
+    inlineListRef.current?.scrollToOffset({ offset, animated: true });
+    setTimeout(() => {
+      inlineListRef.current?.scrollToIndex({
+        index: info.index,
+        animated: true,
+      });
+    }, 80);
+  }, []);
+
+  const handleVerseLongPress = useCallback(async (verse) => {
     if (verse.id === 'bismillah') {
       return;
     }
@@ -411,7 +451,14 @@ const SurahScreen = () => {
         translation: verse.translation,
       });
     }
-  };
+  }, [
+    bookmarkedVerseIds,
+    surahNumber,
+    surahName,
+    nameArabic,
+    hasBismillah,
+    type,
+  ]);
 
   const handleBookmarkAction = async () => {
     if (!selectedVerse) {
@@ -444,13 +491,6 @@ const SurahScreen = () => {
     setSelectedVerse(null);
   };
 
-  // Load more verses for pagination
-  const loadMoreVerses = () => {
-    if (!loadingMore) {
-      setCurrentPage((prevPage) => prevPage + 1);
-    }
-  };
-
   // Calculate font size for rendering
   const { fontSize, lineHeight } = calculateFontSize(width);
 
@@ -467,7 +507,14 @@ const SurahScreen = () => {
         theme={theme}
       />
     ),
-    [fontSize, lineHeight, isEnabled, bookmarkedVerseIds, theme],
+    [
+      fontSize,
+      lineHeight,
+      isEnabled,
+      bookmarkedVerseIds,
+      theme,
+      handleVerseLongPress,
+    ],
   );
 
   // Memoize keyExtractor for FlatList performance
@@ -476,62 +523,25 @@ const SurahScreen = () => {
     [],
   );
 
-  // Memoize inline verses rendering for performance
-  const renderedInlineVerses = useMemo(() => {
-    return verses.map((verse) =>
-      verse.id !== 'bismillah' ? (
-        <Text
-          key={verse.id.toString()}
-          onLayout={(event) => {
-            const offset =
-              inlineTextOffsetRef.current + event.nativeEvent.layout.y;
-            const verseId = Number(verse.id);
-            verseOffsetsRef.current[verseId] = offset;
+  // Render one paragraph block of the continuous view
+  const renderInlineChunk = useCallback(
+    ({ item }) => (
+      <InlineVerseChunk
+        verses={item}
+        fontSize={fontSize}
+        lineHeight={lineHeight}
+        theme={theme}
+        bookmarkedVerseIds={bookmarkedVerseIds}
+        onVerseLongPress={handleVerseLongPress}
+      />
+    ),
+    [fontSize, lineHeight, theme, bookmarkedVerseIds, handleVerseLongPress],
+  );
 
-            if (
-              pendingVerseScrollRef.current === verseId &&
-              inlineScrollRef.current &&
-              !hasAutoScrolledToVerseRef.current
-            ) {
-              inlineScrollRef.current.scrollTo({
-                y: Math.max(0, offset - 24),
-                animated: true,
-              });
-              hasAutoScrolledToVerseRef.current = true;
-              pendingVerseScrollRef.current = null;
-            }
-          }}
-          onLongPress={() => handleVerseLongPress(verse)}
-        >
-          <TajweedText
-            text={verse.text}
-            baseColor={
-              bookmarkedVerseIds[verse.id]
-                ? theme.mode === 'dark'
-                  ? theme.colors.text
-                  : '#D7233C'
-                : theme.colors.text
-            }
-          />
-          <Text
-            style={{
-              color: bookmarkedVerseIds[verse.id]
-                ? theme.mode === 'dark'
-                  ? theme.colors.text
-                  : '#D7233C'
-                : theme.colors.text,
-            }}
-          >
-            {' '}
-            {convertToArabicNumerals(verse.id)}{' '}
-          </Text>
-        </Text>
-      ) : null,
-    );
-  }, [verses, bookmarkedVerseIds, theme]);
+  const inlineKeyExtractor = useCallback((chunk) => `chunk-${chunk[0].id}`, []);
 
   // Loading and error views
-  if (loading && currentPage === 1) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size='large' color='#D7233C' />
@@ -692,8 +702,6 @@ const SurahScreen = () => {
                 </View>
               ) : null
             }
-            onEndReached={loadMoreVerses}
-            onEndReachedThreshold={0.5}
             onScrollToIndexFailed={handleScrollToIndexFailed}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
@@ -701,81 +709,62 @@ const SurahScreen = () => {
             updateCellsBatchingPeriod={50}
             initialNumToRender={15}
             windowSize={10}
-            ListFooterComponent={
-              loadingMore ? (
-                <ActivityIndicator size='small' color='#0000ff' />
-              ) : null
-            }
           />
         ) : surahNumber !== 1 ? (
-          <ScrollView
-            ref={inlineScrollRef}
-            style={{
-              flex: 1,
-              backgroundColor: theme.colors.background,
-            }}
+          <FlatList
+            ref={inlineListRef}
+            data={inlineChunks}
+            renderItem={renderInlineChunk}
+            keyExtractor={inlineKeyExtractor}
             contentInsetAdjustmentBehavior='automatic'
+            contentContainerStyle={[
+              styles.flatlistContent,
+              { backgroundColor: theme.colors.background },
+            ]}
+            ListHeaderComponent={
+              <>
+                {/* Surah name and type header */}
+                <View style={styles.surahNameContainer}>
+                  <ImageBackground
+                    style={styles.surahNameBackground}
+                    resizeMode='cover'
+                    source={require('@/assets/surahName.jpeg')}
+                  >
+                    <Text
+                      style={[
+                        styles.verseText,
+                        styles.surahName,
+                        { color: theme.colors.surahName },
+                      ]}
+                    >
+                      سُورَةٌ {nameArabic}
+                    </Text>
+                    <Text style={[styles.verseText, styles.surahType]}>
+                      {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
+                    </Text>
+                  </ImageBackground>
+                </View>
+
+                {/* Render Bismillah as a block at the top */}
+                {verses.some((verse) => verse.id === 'bismillah') && (
+                  <View style={styles.bismillahContainer}>
+                    <Text style={styles.bismillahText}>
+                      {Platform.OS === 'ios'
+                        ? '\uFDFD'
+                        : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}
+                    </Text>
+                  </View>
+                )}
+              </>
+            }
+            onScrollToIndexFailed={handleInlineScrollToIndexFailed}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
-            scrollEventThrottle={16}
-          >
-            {/* Surah name and type header */}
-
-            <View style={styles.surahNameContainer}>
-              <ImageBackground
-                style={styles.surahNameBackground}
-                resizeMode='cover'
-                source={require('@/assets/surahName.jpeg')}
-              >
-                <Text
-                  style={[
-                    styles.verseText,
-                    styles.surahName,
-                    { color: theme.colors.surahName },
-                  ]}
-                >
-                  سُورَةٌ {nameArabic}
-                </Text>
-                <Text style={[styles.verseText, styles.surahType]}>
-                  {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
-                </Text>
-              </ImageBackground>
-            </View>
-
-            {/* Render Bismillah as a block at the top */}
-            {verses.some((verse) => verse.id === 'bismillah') && (
-              <View style={styles.bismillahContainer}>
-                <Text style={styles.bismillahText}>
-                  {Platform.OS === 'ios'
-                    ? '\uFDFD'
-                    : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}
-                </Text>
-              </View>
-            )}
-
-            {/* Render all verses inline after Bismillah */}
-            <View
-              onLayout={(event) => {
-                inlineTextOffsetRef.current = event.nativeEvent.layout.y;
-              }}
-            >
-              <Text
-                style={[
-                  styles.verseText,
-                  {
-                    fontSize,
-                    lineHeight,
-                    flexWrap: 'wrap',
-                    padding: 10,
-                    alignItems: 'justify',
-                    color: theme.colors.text,
-                  },
-                ]}
-              >
-                {renderedInlineVerses}
-              </Text>
-            </View>
-          </ScrollView>
+            maxToRenderPerBatch={2}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={2}
+            windowSize={5}
+          />
         ) : (
           <SafeAreaView
             edges={[Platform.OS === 'ios' && 'top']}
