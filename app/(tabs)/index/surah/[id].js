@@ -173,7 +173,7 @@ const InlineVerseChunk = memo(
     >
       {verses.map((verse) => {
         const verseColor = bookmarkedVerseIds[verse.id]
-          ? theme.mode === 'dark'
+          ? theme.dark
             ? theme.colors.text
             : '#D7233C'
           : theme.colors.text;
