@@ -7,11 +7,6 @@
     "icon": "./assets/AppIcon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "quranapp",
-    "splash": {
-      "backgroundColor": "#ffffff",
-      "resizeMode": "contain",
-      "image": "./assets/AppIcon.png"
-    },
     "ios": {
       "bundleIdentifier": "com.edunovaasia.test",
       "supportsTablet": true,
@@ -33,6 +28,22 @@
         "projectId": "d5987528-75d3-45a0-9d37-708711944cce"
       }
     },
-    "owner": "rustam-nortadzhiev"
+    "owner": "rustam-nortadzhiev",
+    "experiments": {
+      "reactCompiler": true
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "resizeMode": "contain",
+          "image": "./assets/AppIcon.png"
+        }
+      ],
+      "expo-status-bar"
+    ]
   }
 }
