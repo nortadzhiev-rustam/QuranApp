@@ -300,7 +300,9 @@ const SurahScreen = () => {
       const bismillahTranslations = {
         en: 'In the name of Allah, the Most Gracious, the Most Merciful',
         tr: "Rahman ve Rahim olan Allah'ın adıyla",
-        ru: 'Во имя Аллаха, Милостivого, Милосердного',
+        ru: 'Во имя Аллаха, Милостивого, Милосердного',
+        uz: 'Mehribon va rahmli Allohning nomi bilan boshlayman.',
+        tj: 'Ба номи Худованди бахшандаи меҳрубон.',
       };
 
       const bismillahItem = {
@@ -632,6 +634,18 @@ const SurahScreen = () => {
                 >
                   Türkçe
                 </Stack.Toolbar.MenuAction>
+                <Stack.Toolbar.MenuAction
+                  icon={translationLanguage === 'uz' ? 'checkmark' : undefined}
+                  onPress={() => setTranslationLanguage('uz')}
+                >
+                  Oʻzbekcha
+                </Stack.Toolbar.MenuAction>
+                <Stack.Toolbar.MenuAction
+                  icon={translationLanguage === 'tj' ? 'checkmark' : undefined}
+                  onPress={() => setTranslationLanguage('tj')}
+                >
+                  Тоҷикӣ
+                </Stack.Toolbar.MenuAction>
               </Stack.Toolbar.Menu>
             )}
           </Stack.Toolbar>
@@ -661,6 +675,8 @@ const SurahScreen = () => {
                 <Picker.Item label='English' value='en' />
                 <Picker.Item label='Русский' value='ru' />
                 <Picker.Item label='Türkçe' value='tr' />
+                <Picker.Item label='Oʻzbekcha' value='uz' />
+                <Picker.Item label='Тоҷикӣ' value='tj' />
               </Picker>
             </View>
           </View>

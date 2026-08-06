@@ -251,6 +251,10 @@ export const getQuranData = (language) => {
       return require('../quran/quran_tr.json');
     case 'ru':
       return require('../quran/quran_ru.json');
+    case 'uz':
+      return require('../quran/quran_uz.json');
+    case 'tj':
+      return require('../quran/quran_tj.json');
     case 'en':
     default:
       return require('../quran/quran.json');
