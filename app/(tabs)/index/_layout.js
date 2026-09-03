@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { Platform, Pressable, Text } from 'react-native';
+import { Platform, Pressable, Text, DynamicColorIOS } from 'react-native';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'expo-router';
@@ -16,11 +16,20 @@ export default function Layout() {
           headerShown: true,
           headerBackTitleVisible: false,
           headerTransparent: Platform.OS === 'ios',
-          headerTintColor: theme.colors.text,
-          headerLargeTitleEnabled: Platform.OS === 'ios',
+          headerTintColor:
+            Platform.OS === 'ios'
+              ? DynamicColorIOS({
+                  light: theme.colors.text,
+                  dark: theme.colors.surahName,
+                })
+              : theme.colors.text,
+          headerLargeTitleEnabled: false,
           headerBackButtonDisplayMode: 'minimal',
+          headerTitleAlign: 'center',
           headerStyle: {
-            backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
+            // A hardcoded white header hid the tinted title in dark mode.
+            backgroundColor:
+              Platform.OS === 'ios' ? 'transparent' : theme.colors.card,
           },
           headerTitleStyle: {
             fontWeight: 'bold',
@@ -32,7 +41,7 @@ export default function Layout() {
           name='index'
           options={{
             title: t.alQuran,
-            headerRight:
+            headerLeft:
               Platform.OS === 'android'
                 ? () => (
                     <Pressable
@@ -52,15 +61,14 @@ export default function Layout() {
                 placeholder: t.searchSurahs,
                 hideWhenScrolling: false,
                 autoCapitalize: 'none',
-                autoFocus: true,
               },
             }),
           }}
         >
           {Platform.OS === 'ios' && (
-            <Stack.Toolbar placement='right'>
+            <Stack.Toolbar placement='left'>
               <Stack.Toolbar.Button
-                icon='gear'
+                icon='gearshape.fill'
                 onPress={() => router.push('/settings')}
               />
             </Stack.Toolbar>

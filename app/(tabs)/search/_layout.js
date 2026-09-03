@@ -1,9 +1,12 @@
 import { Stack } from 'expo-router';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SearchLayot() {
-  const colorScheme = useColorScheme();
+  // Read from the theme rather than useColorScheme so a manual light/dark
+  // override in settings is honoured here too.
+  const { theme } = useTheme();
   const { t } = useLanguage();
 
   return (
@@ -16,11 +19,9 @@ export default function SearchLayot() {
         headerBackButtonDisplayMode: 'minimal',
         headerStyle:
           Platform.OS === 'android'
-            ? {
-                backgroundColor: colorScheme === 'dark' ? '#000000' : '#ffffff',
-              }
+            ? { backgroundColor: theme.colors.card }
             : undefined,
-        headerTintColor: colorScheme === 'dark' ? '#ffffff' : undefined,
+        headerTintColor: theme.colors.text,
       }}
     >
       <Stack.Screen
