@@ -21,6 +21,88 @@ import { useFonts } from 'expo-font';
 import { useRouter, useNavigation } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  JUZ_COUNT,
+  getJuzRange,
+  getJuzSegments,
+  getJuzAyahCount,
+} from '@/utils/quranMeta';
+
+// Row metrics. getItemLayout has to account for the segmented control in the
+// list header, otherwise every offset it reports is short by its height.
+const SURAH_ROW_HEIGHT = 110;
+const JUZ_ROW_HEIGHT = 92;
+const LIST_HEADER_HEIGHT = 52;
+
+const ARABIC_NUMERALS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+const toArabicNumerals = (number) =>
+  number
+    .toString()
+    .split('')
+    .map((digit) => ARABIC_NUMERALS[Number.parseInt(digit, 10)])
+    .join('');
+
+// Memoized juz row - one of the thirty parts, with the span it covers.
+const JuzListItem = memo(({ item, onPress, theme, t }) => {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.juzContainer,
+        {
+          backgroundColor: theme.colors.card,
+          shadowColor: theme.colors.shadow,
+        },
+      ]}
+    >
+      <View
+        style={[styles.juzBadge, { backgroundColor: theme.colors.accent }]}
+      >
+        <Text style={[styles.juzBadgeText, { color: theme.colors.onAccent }]}>
+          {item.juz}
+        </Text>
+      </View>
+
+      <View style={styles.juzTextContainer}>
+        <Text style={[styles.juzTitle, { color: theme.colors.text }]}>
+          {t.juz} {item.juz}
+        </Text>
+        <Text
+          style={[styles.juzRange, { color: theme.colors.textSecondary }]}
+          numberOfLines={1}
+        >
+          {item.startName} {item.start.ayahId} - {item.endName}{' '}
+          {item.end.ayahId}
+        </Text>
+      </View>
+
+      <View style={styles.juzInfoContainer}>
+        <Text style={[styles.juzArabic, { color: theme.colors.text }]}>
+          الجزء {toArabicNumerals(item.juz)}
+        </Text>
+        <Text style={[styles.verseCount, { color: theme.colors.textSecondary }]}>
+          {item.ayahCount} {t.ayahs}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+JuzListItem.displayName = 'JuzListItem';
+JuzListItem.propTypes = {
+  item: PropTypes.shape({
+    juz: PropTypes.number.isRequired,
+    start: PropTypes.object.isRequired,
+    end: PropTypes.object.isRequired,
+    startName: PropTypes.string,
+    endName: PropTypes.string,
+    ayahCount: PropTypes.number.isRequired,
+  }).isRequired,
+  onPress: PropTypes.func.isRequired,
+  theme: PropTypes.object.isRequired,
+  t: PropTypes.object.isRequired,
+};
 
 // Memoized list item component for optimal performance
 const SurahListItem = memo(({ item, onPress, theme, t }) => {
@@ -105,6 +187,7 @@ const HomeScreen = () => {
   const { t, language, getChapterData } = useLanguage();
   const [chapters, setChapters] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('surah');
   const [loading, setLoading] = useState(true);
   const [error] = useState(null);
   const [fontsLoaded] = useFonts({
@@ -168,6 +251,81 @@ const HomeScreen = () => {
     [router],
   );
 
+  // The thirty juz, labelled with the surahs they span. Rebuilt only when the
+  // chapter list changes, i.e. on a language switch.
+  const juzRows = useMemo(() => {
+    if (chapters.length === 0) {
+      return [];
+    }
+
+    const nameById = new Map(
+      chapters.map((chapter) => [chapter.id, chapter.transliteration]),
+    );
+
+    return Array.from({ length: JUZ_COUNT }, (unused, index) => {
+      const juz = index + 1;
+      const range = getJuzRange(juz);
+
+      return {
+        juz,
+        start: range.start,
+        end: range.end,
+        startName: nameById.get(range.start.surahId),
+        endName: nameById.get(range.end.surahId),
+        surahCount: getJuzSegments(juz).length,
+        ayahCount: getJuzAyahCount(juz),
+      };
+    });
+  }, [chapters]);
+
+  // A juz is searchable by its number or by the surahs at either end.
+  const filteredJuz = useMemo(() => {
+    if (!searchQuery.trim()) return juzRows;
+
+    const query = searchQuery.toLowerCase();
+    return juzRows.filter(
+      (row) =>
+        row.juz.toString() === query ||
+        row.startName?.toLowerCase().includes(query) ||
+        row.endName?.toLowerCase().includes(query),
+    );
+  }, [searchQuery, juzRows]);
+
+  // Opening a juz lands on its first verse, which is rarely the start of a surah.
+  const handleJuzPress = useCallback(
+    (row) => () => {
+      const chapter = chapters.find(
+        (item) => item.id === row.start.surahId,
+      );
+
+      router.push({
+        pathname: 'surah/[id]',
+        params: {
+          id: row.start.surahId.toString(),
+          surahName: chapter?.transliteration,
+          nameArabic: chapter?.name,
+          hasBismillah: chapter?.bismillah ? 'true' : 'false',
+          type: chapter?.type,
+          totalVerses: chapter?.total_verses?.toString(),
+          verseId: row.start.ayahId.toString(),
+        },
+      });
+    },
+    [chapters, router],
+  );
+
+  const renderJuzItem = useCallback(
+    ({ item }) => (
+      <JuzListItem
+        item={item}
+        onPress={handleJuzPress(item)}
+        theme={theme}
+        t={t}
+      />
+    ),
+    [handleJuzPress, theme, t],
+  );
+
   // Memoized render function to prevent unnecessary re-renders
   const renderItem = useCallback(
     ({ item }) => (
@@ -183,12 +341,66 @@ const HomeScreen = () => {
 
   // Implement getItemLayout if all items have the same height
   const getItemLayout = useCallback(
-    (data, index) => ({
-      length: 110, // item height (100 + margin 10)
-      offset: 110 * index,
-      index,
-    }),
-    [],
+    (data, index) => {
+      const length =
+        viewMode === 'juz' ? JUZ_ROW_HEIGHT : SURAH_ROW_HEIGHT;
+      return {
+        length,
+        offset: LIST_HEADER_HEIGHT + length * index,
+        index,
+      };
+    },
+    [viewMode],
+  );
+
+  const keyExtractor = useCallback(
+    (item) => (viewMode === 'juz' ? `juz-${item.juz}` : item.id.toString()),
+    [viewMode],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.segmentedControl}>
+        {[
+          { mode: 'surah', label: t.surahs },
+          { mode: 'juz', label: t.juz },
+        ].map(({ mode, label }) => {
+          const isActive = viewMode === mode;
+          return (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => setViewMode(mode)}
+              activeOpacity={0.8}
+              accessibilityRole='button'
+              accessibilityState={{ selected: isActive }}
+              style={[
+                styles.segment,
+                {
+                  backgroundColor: isActive
+                    ? theme.colors.accent
+                    : theme.colors.card,
+                  borderColor: isActive
+                    ? theme.colors.accent
+                    : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.segmentLabel,
+                  {
+                    color: isActive ? theme.colors.onAccent : theme.colors.text,
+                  },
+                ]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    ),
+    [viewMode, theme, t],
   );
 
   // Handle loading and error states
@@ -219,9 +431,10 @@ const HomeScreen = () => {
   return (
     <FlatList
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      data={filteredSurahs}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={renderItem}
+      data={viewMode === 'juz' ? filteredJuz : filteredSurahs}
+      keyExtractor={keyExtractor}
+      renderItem={viewMode === 'juz' ? renderJuzItem : renderItem}
+      ListHeaderComponent={listHeader}
       getItemLayout={getItemLayout}
       initialNumToRender={10}
       maxToRenderPerBatch={10}
@@ -306,20 +519,73 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  retryButton: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#007bff',
-    borderRadius: 5,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-  },
   image: {
     width: 40,
     height: 40,
     marginRight: 10,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    gap: 8,
+    height: LIST_HEADER_HEIGHT - 8,
+    marginBottom: 8,
+    marginHorizontal: 5,
+  },
+  segment: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  juzContainer: {
+    marginVertical: 5,
+    margin: 5,
+    padding: 10,
+    height: JUZ_ROW_HEIGHT - 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    shadowOffset: { height: 1, width: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  juzBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  juzBadgeText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  juzTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  juzTitle: {
+    fontSize: Platform.isPad ? 20 : 15,
+    fontWeight: '600',
+  },
+  juzRange: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+  juzInfoContainer: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  juzArabic: {
+    fontSize: 16,
+    fontFamily: 'custom-font',
   },
 });
 

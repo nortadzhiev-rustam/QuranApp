@@ -11,6 +11,7 @@ export default function TajweedGuideScreen() {
 
   return (
     <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior='automatic'

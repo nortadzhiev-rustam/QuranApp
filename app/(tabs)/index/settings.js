@@ -5,19 +5,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useTajweed } from '@/contexts/TajweedContext';
 import { Stack } from 'expo-router';
 
 export default function SettingsTab() {
   const { theme, isDark, themeMode, setThemeMode } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { tajweedEnabled, tawafuqEnabled, toggleTajweed, toggleTawafuq } =
-    useTajweed();
 
   const themeOptions = [
     { value: 'auto', label: t.autoSystem, icon: '🌓' },
@@ -33,6 +29,7 @@ export default function SettingsTab() {
 
   return (
     <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior='automatic'
@@ -64,7 +61,7 @@ export default function SettingsTab() {
             styles.card,
             {
               backgroundColor: theme.colors.card,
-              shadowColor: isDark ? '#000' : '#000',
+              shadowColor: theme.colors.shadow,
               shadowOpacity: isDark ? 0.3 : 0.1,
             },
           ]}
@@ -80,9 +77,7 @@ export default function SettingsTab() {
                     {
                       backgroundColor: isSelected
                         ? theme.colors.accent
-                        : isDark
-                          ? '#2c2c2e'
-                          : '#f5f5f5',
+                        : theme.colors.inputBackground,
                       borderColor: isSelected
                         ? theme.colors.accent
                         : 'transparent',
@@ -96,7 +91,9 @@ export default function SettingsTab() {
                     style={[
                       styles.optionLabel,
                       {
-                        color: isSelected ? '#fff' : theme.colors.text,
+                        color: isSelected
+                          ? theme.colors.onAccent
+                          : theme.colors.text,
                         fontWeight: isSelected ? '600' : '500',
                       },
                     ]}
@@ -125,7 +122,7 @@ export default function SettingsTab() {
             styles.card,
             {
               backgroundColor: theme.colors.card,
-              shadowColor: isDark ? '#000' : '#000',
+              shadowColor: theme.colors.shadow,
               shadowOpacity: isDark ? 0.3 : 0.1,
             },
           ]}
@@ -141,9 +138,7 @@ export default function SettingsTab() {
                     {
                       backgroundColor: isSelected
                         ? theme.colors.accent
-                        : isDark
-                          ? '#2c2c2e'
-                          : '#f5f5f5',
+                        : theme.colors.inputBackground,
                       borderColor: isSelected
                         ? theme.colors.accent
                         : 'transparent',
@@ -157,7 +152,9 @@ export default function SettingsTab() {
                     style={[
                       styles.optionLabel,
                       {
-                        color: isSelected ? '#fff' : theme.colors.text,
+                        color: isSelected
+                          ? theme.colors.onAccent
+                          : theme.colors.text,
                         fontWeight: isSelected ? '600' : '500',
                       },
                     ]}
@@ -171,87 +168,13 @@ export default function SettingsTab() {
         </View>
       </View>
 
-      {/* Tajweed Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text
-            style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}
-          >
-            {t.tajweedSettings}
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: theme.colors.card,
-              shadowColor: isDark ? '#000' : '#000',
-              shadowOpacity: isDark ? 0.3 : 0.1,
-            },
-          ]}
-        >
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, { color: theme.colors.text }]}>
-                {t.enableTajweed}
-              </Text>
-              <Text
-                style={[
-                  styles.settingDescription,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                {t.tajweedDescription}
-              </Text>
-            </View>
-            <Switch
-              value={tajweedEnabled}
-              onValueChange={toggleTajweed}
-              trackColor={{ false: '#767577', true: theme.colors.accent }}
-              thumbColor='#fff'
-            />
-          </View>
-
-          <View
-            style={[styles.separator, { backgroundColor: theme.colors.border }]}
-          />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, { color: theme.colors.text }]}>
-                {t.highlightAllah}
-              </Text>
-              <Text
-                style={[
-                  styles.settingDescription,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                {t.tawafuqDescription}
-              </Text>
-            </View>
-            <Switch
-              value={tawafuqEnabled}
-              onValueChange={toggleTawafuq}
-              trackColor={{ false: '#767577', true: theme.colors.accent }}
-              thumbColor='#fff'
-            />
-          </View>
-        </View>
-      </View>
-
       {/* Status Info */}
       <View
         style={[
           styles.statusCard,
           {
-            backgroundColor: isDark
-              ? 'rgba(0, 122, 255, 0.15)'
-              : 'rgba(0, 122, 255, 0.08)',
-            borderColor: isDark
-              ? 'rgba(0, 122, 255, 0.3)'
-              : 'rgba(0, 122, 255, 0.2)',
+            backgroundColor: theme.colors.infoBackground,
+            borderColor: theme.colors.infoBorder,
           },
         ]}
       >
@@ -373,29 +296,5 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: 8,
     opacity: 0.3,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  settingTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  settingDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  separator: {
-    height: 1,
-    marginVertical: 6,
-    opacity: 0.2,
   },
 });

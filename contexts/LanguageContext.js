@@ -71,9 +71,19 @@ const translations = {
 
     // SurahScreen
     translation: 'Translation',
+    arabicOnly: 'Arabic only',
     surah: 'Surah',
     meccan: 'Meccan',
     medinan: 'Medinan',
+
+    // Juz / Hizb / Page
+    juz: 'Juz',
+    hizb: 'Hizb',
+    page: 'Page',
+    goToPage: 'Go to page',
+    pageRangeHint: 'Enter a page number from 1 to 604',
+    go: 'Go',
+    cancel: 'Cancel',
 
     // Languages
     english: 'English',
@@ -150,9 +160,19 @@ const translations = {
 
     // SurahScreen
     translation: 'Перевод',
+    arabicOnly: 'Только арабский',
     surah: 'Сура',
     meccan: 'Мекканская',
     medinan: 'Мединская',
+
+    // Juz / Hizb / Page
+    juz: 'Джуз',
+    hizb: 'Хизб',
+    page: 'Страница',
+    goToPage: 'Перейти к странице',
+    pageRangeHint: 'Введите номер страницы от 1 до 604',
+    go: 'Перейти',
+    cancel: 'Отмена',
 
     // Languages
     english: 'Английский',
@@ -231,9 +251,19 @@ const translations = {
 
     // SurahScreen
     translation: 'Çeviri',
+    arabicOnly: 'Yalnızca Arapça',
     surah: 'Sure',
     meccan: 'Mekki',
     medinan: 'Medeni',
+
+    // Juz / Hizb / Page
+    juz: 'Cüz',
+    hizb: 'Hizip',
+    page: 'Sayfa',
+    goToPage: 'Sayfaya git',
+    pageRangeHint: "1 ile 604 arasında bir sayfa numarası girin",
+    go: 'Git',
+    cancel: 'İptal',
 
     // Languages
     english: 'İngilizce',
@@ -261,6 +291,15 @@ export const getQuranData = (language) => {
   }
 };
 
+// Translations shipped with the app. `null` (Arabic only) is the absence of one.
+export const TRANSLATION_LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'uz', label: 'Oʻzbekcha' },
+  { code: 'tj', label: 'Тоҷикӣ' },
+];
+
 // Helper function to get chapter data with translations based on language
 export const getChapterData = (language) => {
   const chapters = require('../quran/chapters.json');
@@ -279,29 +318,47 @@ export const getChapterData = (language) => {
 const LanguageContext = createContext({
   language: 'en',
   setLanguage: () => {},
+  translationLanguage: null,
+  setTranslationLanguage: () => {},
   t: translations.en,
   getQuranData: () => {},
   getChapterData: () => {},
 });
 
 const LANGUAGE_STORAGE_KEY = '@quran_app_language';
+const TRANSLATION_STORAGE_KEY = '@quran_app_translation_language';
+// AsyncStorage holds strings only, so "Arabic only" needs a sentinel.
+const TRANSLATION_OFF = 'none';
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguageState] = useState('en');
+  // Which translation is shown alongside the Arabic; null means Arabic only.
+  const [translationLanguage, setTranslationLanguageState] = useState(null);
 
-  // Load saved language on mount
+  // Load saved preferences on mount
   useEffect(() => {
-    loadLanguage();
+    loadPreferences();
   }, []);
 
-  const loadLanguage = async () => {
+  const loadPreferences = async () => {
     try {
-      const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+      const [[, savedLanguage], [, savedTranslation]] =
+        await AsyncStorage.multiGet([
+          LANGUAGE_STORAGE_KEY,
+          TRANSLATION_STORAGE_KEY,
+        ]);
+
       if (savedLanguage && translations[savedLanguage]) {
         setLanguageState(savedLanguage);
       }
+      if (
+        savedTranslation &&
+        TRANSLATION_LANGUAGES.some((item) => item.code === savedTranslation)
+      ) {
+        setTranslationLanguageState(savedTranslation);
+      }
     } catch (error) {
-      console.error('Failed to load language:', error);
+      console.error('Failed to load language preferences:', error);
     }
   };
 
@@ -316,9 +373,28 @@ export const LanguageProvider = ({ children }) => {
     }
   };
 
+  // Pass a language code to show that translation, or null for Arabic only.
+  const setTranslationLanguage = async (lang) => {
+    const next = TRANSLATION_LANGUAGES.some((item) => item.code === lang)
+      ? lang
+      : null;
+    setTranslationLanguageState(next);
+
+    try {
+      await AsyncStorage.setItem(
+        TRANSLATION_STORAGE_KEY,
+        next ?? TRANSLATION_OFF,
+      );
+    } catch (error) {
+      console.error('Failed to save translation language:', error);
+    }
+  };
+
   const value = {
     language,
     setLanguage,
+    translationLanguage,
+    setTranslationLanguage,
     t: translations[language],
     getQuranData: (lang) => getQuranData(lang || language),
     getChapterData: (lang) => getChapterData(lang || language),

@@ -14,7 +14,6 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Switch,
   TouchableOpacity,
   I18nManager,
   Platform,
@@ -22,8 +21,6 @@ import {
   ImageBackground,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome6';
-import { Picker } from '@react-native-picker/picker';
 import { useFonts } from 'expo-font';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -32,19 +29,33 @@ import {
   useFocusEffect,
   useRouter,
 } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TabBarContext } from '@/contexts/TabBarContext';
 import { getBookmarks, toggleVerseBookmark } from '@/utils/bookmarks';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  useLanguage,
+  TRANSLATION_LANGUAGES,
+} from '@/contexts/LanguageContext';
 import { useTajweed } from '@/contexts/TajweedContext';
 import TajweedText from '@/components/TajweedText';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import ReadingPositionBar from '@/components/ReadingPositionBar';
+import MushafLine from '@/components/MushafLine';
+import {
+  getSurahLines,
+  findLineIndexForVerse,
+} from '@/utils/mushafLayout';
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
 
 // Screen dimensions
 const { width, height } = Dimensions.get('window');
+
+// Android toolbar menus need an image source - SF Symbols are dropped there.
+const translateIcon = require('@/assets/icons/translate.xml');
+const textFormatIcon = require('@/assets/icons/text_format.xml');
+
+// The topmost visible item is the anchor kept across a layout switch.
+const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 10 };
 
 // Utility function to convert numbers to Arabic numerals
 const convertToArabicNumerals = (number) => {
@@ -74,7 +85,7 @@ const VerseItem = memo(
     item = {},
     fontSize = 16,
     lineHeight = 1.5,
-    isEnabled = false,
+    showTranslation = false,
     isBookmarked = false,
     onLongPress,
     theme,
@@ -89,7 +100,7 @@ const VerseItem = memo(
                 : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'
             }
             style={styles.bismillahText}
-            baseColor={theme.colors.error}
+            baseColor={theme.colors.brand}
           />
         </View>
       );
@@ -113,19 +124,24 @@ const VerseItem = memo(
               textAlign: 'justify',
             },
           ]}
-          baseColor={isBookmarked ? '#D7233C' : theme.colors.text}
+          baseColor={isBookmarked ? theme.colors.brand : theme.colors.text}
         >
-          <Text style={{ color: isBookmarked ? '#D7233C' : theme.colors.text }}>
+          <Text
+            style={{
+              color: isBookmarked ? theme.colors.brand : theme.colors.text,
+            }}
+          >
             {' '}
             {convertToArabicNumerals(item.id)}
           </Text>
         </TajweedText>
 
-        {isEnabled && (
+        {showTranslation && (
           <Text
             style={[
               styles.verseTranslation,
               {
+                borderBottomColor: theme.colors.border,
                 fontSize: Platform.isPad ? fontSize * 0.4 : fontSize * 0.6,
                 lineHeight: Platform.isPad
                   ? lineHeight * 0.6
@@ -144,74 +160,17 @@ const VerseItem = memo(
   },
 );
 
-// Number of verses rendered inside a single inline paragraph block.
-// Verses flow together within a block; blocks are what the list virtualizes,
-// so opening a surah only lays out the blocks that are on screen.
-const INLINE_CHUNK_SIZE = 10;
-
-// InlineVerseChunk - one paragraph block of the continuous (translation off) view.
-// Memoized so scrolling only mounts/lays out the blocks near the viewport.
-const InlineVerseChunk = memo(
-  ({
-    verses,
-    fontSize,
-    lineHeight,
-    theme,
-    bookmarkedVerseIds,
-    onVerseLongPress,
-  }) => (
-    <Text
-      style={[
-        styles.verseText,
-        {
-          fontSize,
-          lineHeight,
-          paddingHorizontal: 10,
-          color: theme.colors.text,
-        },
-      ]}
-    >
-      {verses.map((verse) => {
-        const verseColor = bookmarkedVerseIds[verse.id]
-          ? theme.dark
-            ? theme.colors.text
-            : '#D7233C'
-          : theme.colors.text;
-
-        return (
-          <Text
-            key={verse.id.toString()}
-            onLongPress={() => onVerseLongPress(verse)}
-          >
-            <TajweedText text={verse.text} baseColor={verseColor} />
-            <Text style={{ color: verseColor }}>
-              {' '}
-              {convertToArabicNumerals(verse.id)}{' '}
-            </Text>
-          </Text>
-        );
-      })}
-    </Text>
-  ),
-);
-
-InlineVerseChunk.displayName = 'InlineVerseChunk';
-
-// HeaderRight component for navigation bar
-const HeaderRight = ({ isOpen, toggleOpen }) => (
-  <TouchableOpacity style={{}} onPress={toggleOpen}>
-    <Icon
-      name={isOpen ? 'chevron-up' : 'chevron-down'}
-      color='black'
-      size={20}
-    />
-  </TouchableOpacity>
-);
-
 // Main SurahScreen component
 const SurahScreen = () => {
   const { theme, isDark } = useTheme();
-  const { t, language, getQuranData } = useLanguage(); // language is for UI only
+  // The shown translation is a global preference, not per-surah state.
+  const {
+    t,
+    getQuranData,
+    getChapterData,
+    translationLanguage,
+    setTranslationLanguage,
+  } = useLanguage();
   const params = useLocalSearchParams();
   const router = useRouter();
   const listRef = useRef(null);
@@ -228,22 +187,19 @@ const SurahScreen = () => {
   const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isEnabled, setIsEnabled] = useState(false); // Translation switch
-  const [isOpen, setIsOpen] = useState(false); // Translation toggle menu
   const [bookmarkedVerseIds, setBookmarkedVerseIds] = useState({});
   const [selectedVerse, setSelectedVerse] = useState(null); // Track selected verse for bookmarking
+  const [anchorVerse, setAnchorVerse] = useState(null); // Topmost visible verse
   const [currentSurahName, setCurrentSurahName] = useState(surahName); // Track surah name based on language
-  const [translationLanguage, setTranslationLanguage] = useState(language); // Separate translation language
+  // A translation language implies the verse-by-verse layout; null is Arabic only.
+  const showTranslation = translationLanguage !== null;
   const { setIsTabBarHidden } = use(TabBarContext);
-  const { tajweedEnabled } = useTajweed();
+  const { tajweedEnabled, tawafuqEnabled, toggleTajweed, toggleTawafuq } =
+    useTajweed();
   // Font loading
   const [fontsLoaded] = useFonts({
     'uthmani-font': require('@/assets/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf'),
   });
-
-  // Toggle switch state for translation
-  const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
-  const toggleOpen = () => setIsOpen((previousState) => !previousState);
 
   // Memoized so the effect runs on focus/blur only, not on every render
   useFocusEffect(
@@ -336,25 +292,20 @@ const SurahScreen = () => {
     hasBismillah,
   ]);
 
-  // Group verses into paragraph blocks for the continuous reading view.
-  // Depends only on `verses`, so bookmarking or theming never rebuilds it.
-  const inlineChunks = useMemo(() => {
+  // The continuous view follows the printed mushaf's own line breaks rather
+  // than reflowing. That is what produces tawafuq - لفظ الجلالة lining up
+  // vertically - and it also means no block ever ends on a stranded short line.
+  const mushafLines = useMemo(() => {
     const readableVerses = verses.filter((verse) => verse.id !== 'bismillah');
-    const chunks = [];
-
-    for (let i = 0; i < readableVerses.length; i += INLINE_CHUNK_SIZE) {
-      chunks.push(readableVerses.slice(i, i + INLINE_CHUNK_SIZE));
-    }
-
-    return chunks;
-  }, [verses]);
+    return getSurahLines(surahNumber, readableVerses);
+  }, [verses, surahNumber]);
 
   useEffect(() => {
     if (!Number.isFinite(verseParam) || verses.length === 0) {
       return;
     }
 
-    if (isEnabled) {
+    if (showTranslation) {
       const index = verses.findIndex(
         (verse) => Number(verse.id) === verseParam,
       );
@@ -364,17 +315,93 @@ const SurahScreen = () => {
       return;
     }
 
-    // Continuous mode scrolls to the block holding the verse
-    const chunkIndex = inlineChunks.findIndex((chunk) =>
-      chunk.some((verse) => Number(verse.id) === verseParam),
-    );
-    if (chunkIndex > -1) {
+    // Continuous mode scrolls to the mushaf line holding the verse
+    const lineIndex = findLineIndexForVerse(mushafLines, verseParam);
+    if (lineIndex > -1) {
       inlineListRef.current?.scrollToIndex({
-        index: chunkIndex,
+        index: lineIndex,
         animated: true,
       });
     }
-  }, [verseParam, verses, isEnabled, inlineChunks]);
+  }, [verseParam, verses, showTranslation, mushafLines]);
+
+  // Remember the verse on screen so switching layouts lands on it again
+  // instead of jumping back to the top of a freshly mounted list.
+  const anchorVerseRef = useRef(null);
+  const renderedLayoutRef = useRef(showTranslation);
+
+  const handleViewableItemsChanged = useCallback(({ viewableItems }) => {
+    const verseId = Number(viewableItems[0]?.item?.id);
+    if (Number.isFinite(verseId)) {
+      anchorVerseRef.current = verseId;
+      setAnchorVerse(verseId);
+    }
+  }, []);
+
+  const handleInlineViewableItemsChanged = useCallback(({ viewableItems }) => {
+    // Items here are mushaf lines, so the anchor is the line's first word.
+    const verseId = Number(viewableItems[0]?.item?.words?.[0]?.ayahId);
+    if (Number.isFinite(verseId)) {
+      anchorVerseRef.current = verseId;
+      setAnchorVerse(verseId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (renderedLayoutRef.current === showTranslation || verses.length === 0) {
+      return;
+    }
+    renderedLayoutRef.current = showTranslation;
+
+    const verseId = anchorVerseRef.current;
+    if (!Number.isFinite(verseId)) {
+      return;
+    }
+
+    if (showTranslation) {
+      const index = verses.findIndex((verse) => Number(verse.id) === verseId);
+      if (index > -1) {
+        listRef.current?.scrollToIndex({ index, animated: false });
+      }
+      return;
+    }
+
+    const lineIndex = findLineIndexForVerse(mushafLines, verseId);
+    if (lineIndex > -1) {
+      inlineListRef.current?.scrollToIndex({
+        index: lineIndex,
+        animated: false,
+      });
+    }
+  }, [showTranslation, verses, mushafLines]);
+
+  useEffect(() => {
+    setAnchorVerse(Number.isFinite(verseParam) ? verseParam : 1);
+  }, [surahNumber, verseParam]);
+
+  // A page rarely starts on a surah boundary, so jumping means re-entering the
+  // reader on the surah that owns it. `replace` keeps the back stack flat.
+  const handleJumpToPage = useCallback(
+    (target) => {
+      const chapter = getChapterData().find(
+        (item) => item.id === target.surahId,
+      );
+
+      router.replace({
+        pathname: '/surah/[id]',
+        params: {
+          id: target.surahId.toString(),
+          surahName: chapter?.transliteration,
+          nameArabic: chapter?.name,
+          hasBismillah: chapter?.bismillah ? 'true' : 'false',
+          type: chapter?.type,
+          totalVerses: chapter?.total_verses?.toString(),
+          verseId: target.ayahId.toString(),
+        },
+      });
+    },
+    [getChapterData, router],
+  );
 
   const handleScrollToIndexFailed = useCallback((info) => {
     const offset = info.averageItemLength * info.index;
@@ -503,7 +530,7 @@ const SurahScreen = () => {
         item={item}
         fontSize={fontSize}
         lineHeight={lineHeight}
-        isEnabled={isEnabled}
+        showTranslation={showTranslation}
         isBookmarked={Boolean(bookmarkedVerseIds[item.id])}
         onLongPress={() => handleVerseLongPress(item)}
         theme={theme}
@@ -512,7 +539,7 @@ const SurahScreen = () => {
     [
       fontSize,
       lineHeight,
-      isEnabled,
+      showTranslation,
       bookmarkedVerseIds,
       theme,
       handleVerseLongPress,
@@ -525,29 +552,57 @@ const SurahScreen = () => {
     [],
   );
 
-  // Render one paragraph block of the continuous view
-  const renderInlineChunk = useCallback(
-    ({ item }) => (
-      <InlineVerseChunk
-        verses={item}
+  // A line reports the ayah it was pressed on; the sheet needs the verse.
+  const handleLineVerseLongPress = useCallback(
+    (ayahId) => {
+      const verse = verses.find((item) => Number(item.id) === ayahId);
+      if (verse) {
+        handleVerseLongPress(verse);
+      }
+    },
+    [verses, handleVerseLongPress],
+  );
+
+  // Render one mushaf line. Every line but the surah's last is spread to fill
+  // the column, the way the printed page justifies it; the last one is centred
+  // instead of flinging two words to opposite edges.
+  const renderMushafLine = useCallback(
+    ({ item, index }) => (
+      <MushafLine
+        words={item.words}
         fontSize={fontSize}
         lineHeight={lineHeight}
         theme={theme}
         bookmarkedVerseIds={bookmarkedVerseIds}
-        onVerseLongPress={handleVerseLongPress}
+        onVerseLongPress={handleLineVerseLongPress}
+        stretch={index < mushafLines.length - 1}
       />
     ),
-    [fontSize, lineHeight, theme, bookmarkedVerseIds, handleVerseLongPress],
+    [
+      fontSize,
+      lineHeight,
+      theme,
+      bookmarkedVerseIds,
+      handleLineVerseLongPress,
+      mushafLines.length,
+    ],
   );
 
-  const inlineKeyExtractor = useCallback((chunk) => `chunk-${chunk[0].id}`, []);
+  const mushafKeyExtractor = useCallback((line) => line.key, []);
 
   // Loading and error views
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#D7233C' />
-        <Text style={{ marginTop: 10, color: '#666' }}>Loading...</Text>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
+        <ActivityIndicator size='large' color={theme.colors.brand} />
+        <Text style={{ marginTop: 10, color: theme.colors.textSecondary }}>
+          Loading...
+        </Text>
       </View>
     );
   }
@@ -566,124 +621,101 @@ const SurahScreen = () => {
         options={{
           headerBackButtonDisplayMode: 'minimal',
           title: currentSurahName,
-          headerRight:
-            Platform.OS === 'android'
-              ? () => <HeaderRight isOpen={isOpen} toggleOpen={toggleOpen} />
-              : undefined,
         }}
       />
-      {Platform.OS === 'ios' &&
-        (selectedVerse ? (
-          <Stack.Toolbar placement='right'>
-            {/* Show bookmark menu when a verse is selected*/}
-            <Stack.Toolbar.Menu
+      <Stack.Toolbar
+        placement='right'
+        tintColor={theme.colors.text}
+        backgroundColor={theme.colors.card}
+      >
+        {/* Bookmarking joins the translation menu rather than replacing it */}
+        {Platform.OS === 'ios' && selectedVerse && (
+          <Stack.Toolbar.Menu
+            icon={
+              bookmarkedVerseIds[selectedVerse.verseId]
+                ? 'bookmark.fill'
+                : 'bookmark'
+            }
+            title='Bookmark Options'
+          >
+            <Stack.Toolbar.MenuAction
               icon={
                 bookmarkedVerseIds[selectedVerse.verseId]
                   ? 'bookmark.fill'
                   : 'bookmark'
               }
-              title='Bookmark Options'
+              onPress={handleBookmarkAction}
             >
-              <Stack.Toolbar.MenuAction
-                icon={
-                  bookmarkedVerseIds[selectedVerse.verseId]
-                    ? 'bookmark.fill'
-                    : 'bookmark'
-                }
-                onPress={handleBookmarkAction}
-              >
-                {bookmarkedVerseIds[selectedVerse.verseId]
-                  ? 'Remove Bookmark'
-                  : 'Create Bookmark'}
-              </Stack.Toolbar.MenuAction>
-              <Stack.Toolbar.MenuAction
-                icon='xmark'
-                onPress={() => setSelectedVerse(null)}
-              >
-                Cancel
-              </Stack.Toolbar.MenuAction>
-            </Stack.Toolbar.Menu>
-          </Stack.Toolbar>
-        ) : (
-          // Show translation toggle by default
-          <Stack.Toolbar placement='right'>
-            <Stack.Toolbar.Button
-              variant={isEnabled ? 'done' : 'plain'}
-              icon='translate'
-              isOn={isEnabled}
-              onPress={toggleSwitch}
-            />
-
-            {isEnabled && (
-              <Stack.Toolbar.Menu icon='globe' title='Translation Language'>
-                <Stack.Toolbar.MenuAction
-                  icon={translationLanguage === 'en' ? 'checkmark' : undefined}
-                  onPress={() => setTranslationLanguage('en')}
-                >
-                  English
-                </Stack.Toolbar.MenuAction>
-                <Stack.Toolbar.MenuAction
-                  icon={translationLanguage === 'ru' ? 'checkmark' : undefined}
-                  onPress={() => setTranslationLanguage('ru')}
-                >
-                  Русский
-                </Stack.Toolbar.MenuAction>
-                <Stack.Toolbar.MenuAction
-                  icon={translationLanguage === 'tr' ? 'checkmark' : undefined}
-                  onPress={() => setTranslationLanguage('tr')}
-                >
-                  Türkçe
-                </Stack.Toolbar.MenuAction>
-                <Stack.Toolbar.MenuAction
-                  icon={translationLanguage === 'uz' ? 'checkmark' : undefined}
-                  onPress={() => setTranslationLanguage('uz')}
-                >
-                  Oʻzbekcha
-                </Stack.Toolbar.MenuAction>
-                <Stack.Toolbar.MenuAction
-                  icon={translationLanguage === 'tj' ? 'checkmark' : undefined}
-                  onPress={() => setTranslationLanguage('tj')}
-                >
-                  Тоҷикӣ
-                </Stack.Toolbar.MenuAction>
-              </Stack.Toolbar.Menu>
-            )}
-          </Stack.Toolbar>
-        ))}
-      <View style={{ flex: 1 }}>
-        {/* Translation toggle menu */}
-        {isOpen && Platform.OS === 'android' && (
-          <View style={styles.headerContainer}>
-            <View style={styles.translationToggle}>
-              <Text style={{ marginRight: 10 }}>{t.translation}</Text>
-              <Switch
-                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
-                onValueChange={toggleSwitch}
-                value={isEnabled}
-              />
-            </View>
-            <View style={styles.languagePicker}>
-              <Text style={{ marginRight: 10 }}>
-                {t.language || 'Language'}:
-              </Text>
-              <Picker
-                selectedValue={translationLanguage}
-                style={styles.picker}
-                onValueChange={(itemValue) => setTranslationLanguage(itemValue)}
-              >
-                <Picker.Item label='English' value='en' />
-                <Picker.Item label='Русский' value='ru' />
-                <Picker.Item label='Türkçe' value='tr' />
-                <Picker.Item label='Oʻzbekcha' value='uz' />
-                <Picker.Item label='Тоҷикӣ' value='tj' />
-              </Picker>
-            </View>
-          </View>
+              {bookmarkedVerseIds[selectedVerse.verseId]
+                ? 'Remove Bookmark'
+                : 'Create Bookmark'}
+            </Stack.Toolbar.MenuAction>
+            <Stack.Toolbar.MenuAction
+              icon='xmark'
+              onPress={() => setSelectedVerse(null)}
+            >
+              Cancel
+            </Stack.Toolbar.MenuAction>
+          </Stack.Toolbar.Menu>
         )}
 
+        {/* One menu owns the whole decision: no translation, or which one */}
+        <Stack.Toolbar.Menu
+          // 'globe' over 'translate': the latter is a wide, heavy glyph next
+          // to the neighbouring 'textformat', and SF Symbols in a header item
+          // can't be resized - RNSBarButtonItem calls systemImageNamed: with
+          // no symbol configuration.
+          icon={Platform.OS === 'ios' ? 'globe' : translateIcon}
+          // Without 'template' the drawable keeps its own black and vanishes
+          // against a dark header.
+          iconRenderingMode='template'
+          title={t.translation}
+          accessibilityLabel={t.translation}
+        >
+          <Stack.Toolbar.MenuAction
+            isOn={!showTranslation}
+            onPress={() => setTranslationLanguage(null)}
+          >
+            {t.arabicOnly}
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.Menu inline>
+            {TRANSLATION_LANGUAGES.map(({ code, label }) => (
+              <Stack.Toolbar.MenuAction
+                key={code}
+                isOn={translationLanguage === code}
+                onPress={() => setTranslationLanguage(code)}
+              >
+                {label}
+              </Stack.Toolbar.MenuAction>
+            ))}
+          </Stack.Toolbar.Menu>
+        </Stack.Toolbar.Menu>
+
+        {/* Tajweed changes how the verses below are drawn, so it belongs here
+            rather than three taps away in Settings. */}
+        <Stack.Toolbar.Menu
+          icon={Platform.OS === 'ios' ? 'textformat' : textFormatIcon}
+          iconRenderingMode='template'
+          title={t.tajweedSettings}
+          accessibilityLabel={t.tajweedSettings}
+        >
+          <Stack.Toolbar.MenuAction
+            isOn={tajweedEnabled}
+            onPress={toggleTajweed}
+          >
+            {t.enableTajweed}
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction
+            isOn={tawafuqEnabled}
+            onPress={toggleTawafuq}
+          >
+            {t.highlightAllah}
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
+      </Stack.Toolbar>
+      <View style={{ flex: 1 }}>
         {/* Verses rendering */}
-        {isEnabled ? (
+        {showTranslation ? (
           <FlatList
             ref={listRef}
             data={verses}
@@ -695,7 +727,7 @@ const SurahScreen = () => {
               { backgroundColor: theme.colors.background },
             ]}
             ListHeaderComponent={
-              surahNumber !== 1 || isEnabled ? (
+              surahNumber !== 1 || showTranslation ? (
                 <View style={styles.surahNameContainer}>
                   <ImageBackground
                     style={styles.surahNameBackground}
@@ -711,7 +743,13 @@ const SurahScreen = () => {
                     >
                       سُورَةٌ {nameArabic}
                     </Text>
-                    <Text style={[styles.verseText, styles.surahType]}>
+                    <Text
+                      style={[
+                        styles.verseText,
+                        styles.surahType,
+                        { color: theme.colors.surahName },
+                      ]}
+                    >
                       {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
                     </Text>
                   </ImageBackground>
@@ -719,6 +757,8 @@ const SurahScreen = () => {
               ) : null
             }
             onScrollToIndexFailed={handleScrollToIndexFailed}
+            onViewableItemsChanged={handleViewableItemsChanged}
+            viewabilityConfig={VIEWABILITY_CONFIG}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
@@ -729,9 +769,9 @@ const SurahScreen = () => {
         ) : surahNumber !== 1 ? (
           <FlatList
             ref={inlineListRef}
-            data={inlineChunks}
-            renderItem={renderInlineChunk}
-            keyExtractor={inlineKeyExtractor}
+            data={mushafLines}
+            renderItem={renderMushafLine}
+            keyExtractor={mushafKeyExtractor}
             contentInsetAdjustmentBehavior='automatic'
             contentContainerStyle={[
               styles.flatlistContent,
@@ -755,7 +795,13 @@ const SurahScreen = () => {
                     >
                       سُورَةٌ {nameArabic}
                     </Text>
-                    <Text style={[styles.verseText, styles.surahType]}>
+                    <Text
+                      style={[
+                        styles.verseText,
+                        styles.surahType,
+                        { color: theme.colors.surahName },
+                      ]}
+                    >
                       {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
                     </Text>
                   </ImageBackground>
@@ -764,7 +810,12 @@ const SurahScreen = () => {
                 {/* Render Bismillah as a block at the top */}
                 {verses.some((verse) => verse.id === 'bismillah') && (
                   <View style={styles.bismillahContainer}>
-                    <Text style={styles.bismillahText}>
+                    <Text
+                      style={[
+                        styles.bismillahText,
+                        { color: theme.colors.brand },
+                      ]}
+                    >
                       {Platform.OS === 'ios'
                         ? '\uFDFD'
                         : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}
@@ -774,12 +825,16 @@ const SurahScreen = () => {
               </>
             }
             onScrollToIndexFailed={handleInlineScrollToIndexFailed}
+            onViewableItemsChanged={handleInlineViewableItemsChanged}
+            viewabilityConfig={VIEWABILITY_CONFIG}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
-            maxToRenderPerBatch={2}
+            // Rows are single mushaf lines now, not ten-verse blocks, so a
+            // couple of rows would leave the screen half empty on open.
+            maxToRenderPerBatch={12}
             updateCellsBatchingPeriod={50}
-            initialNumToRender={2}
-            windowSize={5}
+            initialNumToRender={20}
+            windowSize={10}
           />
         ) : (
           <SafeAreaView
@@ -795,6 +850,16 @@ const SurahScreen = () => {
           </SafeAreaView>
         )}
       </View>
+      {/* Last in the column: on Android this renders a real bottom bar, so it
+          has to follow the flex:1 content to sit under it. On iOS it renders
+          the native toolbar, where position in the tree does not matter. */}
+      <ReadingPositionBar
+        surahId={surahNumber}
+        verseId={anchorVerse}
+        theme={theme}
+        t={t}
+        onJumpToPage={handleJumpToPage}
+      />
     </>
   );
 };
@@ -802,7 +867,6 @@ const SurahScreen = () => {
 // Stylesheet for SurahScreen
 const styles = StyleSheet.create({
   flatlistContent: {
-    backgroundColor: '#F9F6EF',
     minHeight: '100%',
     paddingBottom: Platform.isPad ? 200 : 100,
   },
@@ -813,16 +877,13 @@ const styles = StyleSheet.create({
   },
   verseText: {
     fontFamily: 'uthmani-font',
-    color: '#333',
     writingDirection: 'rtl',
     textAlign: 'justify',
   },
   verseTranslation: {
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#666',
     borderStyle: 'solid',
-    color: '#555',
   },
   bismillahContainer: {
     width: width,
@@ -834,7 +895,6 @@ const styles = StyleSheet.create({
   bismillahText: {
     fontFamily: 'uthmani-font',
     fontSize: Platform.OS === 'ios' ? width * 0.145 : width * 0.12,
-    color: '#D7233C',
     textAlign: 'center',
     writingDirection: 'rtl',
   },
@@ -842,7 +902,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9F6EF',
   },
   errorContainer: {
     flex: 1,
@@ -862,13 +921,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   surahName: {
-    color: '#fff',
     fontSize: width * 0.07,
     lineHeight: width * 0.1,
     alignItems: 'center',
   },
   surahType: {
-    color: '#fff',
     fontSize: width * 0.07,
     lineHeight: width * 0.1,
   },
@@ -877,63 +934,9 @@ const styles = StyleSheet.create({
     maxWidth: width,
     height: Platform.isPad ? height * 0.9 : height * 0.78,
   },
-  bottomNavigation: {
-    height: 60,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  navButton: {
-    alignItems: 'center',
-  },
-  modal: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 0,
-    borderWidth: 1,
-    borderColor: 'black',
-    borderStyle: 'solid',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    width: width,
-    height: '40%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   label: {
     fontSize: 18,
     marginBottom: 10,
-  },
-  picker: {
-    height: 50,
-    width: '50%',
-    color: '#000',
-    backgroundColor: '#f5f5f5',
-  },
-  headerContainer: {
-    backgroundColor: 'white',
-    flexDirection: 'row',
-    alignItems: 'center',
-    maxHeight: 70,
-    padding: 5,
-    justifyContent: 'space-between',
-  },
-  translationToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  languagePicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 20,
   },
 });
 

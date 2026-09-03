@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { DefaultTheme, DarkTheme } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Extended theme with custom colors and values
 const lightTheme = {
@@ -22,7 +23,17 @@ const lightTheme = {
     cardBorder: '#e9ecef',
     inputBackground: '#f8f9fa',
     shadow: 'rgba(0, 0, 0, 0.1)',
-    surahName: '#fffffff',
+    surahName: '#ffffff',
+    // Brand crimson used for Bismillah, bookmarked verses and loading spinners.
+    brand: '#D7233C',
+    // Foreground for text/icons sitting on top of `accent` or `brand`.
+    onAccent: '#ffffff',
+    // Resting track of a Switch; the "on" track uses `accent`.
+    switchTrack: '#767577',
+    switchThumb: '#ffffff',
+    // Tinted informational panel (settings status card).
+    infoBackground: 'rgba(0, 122, 255, 0.08)',
+    infoBorder: 'rgba(0, 122, 255, 0.2)',
   },
   spacing: {
     xs: 4,
@@ -69,6 +80,13 @@ const darkTheme = {
     inputBackground: '#1c1c1e',
     shadow: 'rgba(255, 255, 255, 0.1)',
     surahName: '#ffffff',
+    // Lightened so the crimson stays legible against the black background.
+    brand: '#ff6b7a',
+    onAccent: '#ffffff',
+    switchTrack: '#39393d',
+    switchThumb: '#ffffff',
+    infoBackground: 'rgba(0, 122, 255, 0.15)',
+    infoBorder: 'rgba(0, 122, 255, 0.3)',
   },
   spacing: {
     xs: 4,
@@ -103,9 +121,42 @@ const ThemeContext = createContext({
   setThemeMode: () => {},
 });
 
+const THEME_MODE_STORAGE_KEY = '@quran_app_theme_mode';
+const THEME_MODES = ['auto', 'light', 'dark'];
+
 export const ThemeProvider = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState('auto'); // 'auto', 'light', 'dark'
+  const [themeMode, setThemeModeState] = useState('auto'); // 'auto', 'light', 'dark'
+
+  // Restore the saved preference on mount; 'auto' stands until it arrives.
+  useEffect(() => {
+    loadThemeMode();
+  }, []);
+
+  const loadThemeMode = async () => {
+    try {
+      const savedMode = await AsyncStorage.getItem(THEME_MODE_STORAGE_KEY);
+      if (savedMode && THEME_MODES.includes(savedMode)) {
+        setThemeModeState(savedMode);
+      }
+    } catch (error) {
+      console.error('Failed to load theme mode:', error);
+    }
+  };
+
+  const setThemeMode = async (mode) => {
+    if (!THEME_MODES.includes(mode)) {
+      return;
+    }
+
+    setThemeModeState(mode);
+
+    try {
+      await AsyncStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
+    } catch (error) {
+      console.error('Failed to save theme mode:', error);
+    }
+  };
 
   const isDark =
     themeMode === 'auto' ? systemColorScheme === 'dark' : themeMode === 'dark';
@@ -113,13 +164,8 @@ export const ThemeProvider = ({ children }) => {
   const theme = isDark ? darkTheme : lightTheme;
 
   const toggleTheme = () => {
-    if (themeMode === 'auto') {
-      setThemeMode('light');
-    } else if (themeMode === 'light') {
-      setThemeMode('dark');
-    } else {
-      setThemeMode('auto');
-    }
+    const nextIndex = (THEME_MODES.indexOf(themeMode) + 1) % THEME_MODES.length;
+    setThemeMode(THEME_MODES[nextIndex]);
   };
 
   const value = {

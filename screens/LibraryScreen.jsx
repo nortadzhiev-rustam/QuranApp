@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const books = [
   {
@@ -24,18 +32,28 @@ const books = [
 ];
 
 const LibraryScreen = () => {
+  const { theme } = useTheme();
+
   const renderBook = ({ item }) => (
-    <TouchableOpacity style={styles.bookContainer}>
+    <TouchableOpacity
+      style={[styles.bookContainer, { borderBottomColor: theme.colors.border }]}
+    >
       <Image source={{ uri: item.cover }} style={styles.coverImage} />
       <View style={styles.bookInfo}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.author}>{item.author}</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          {item.title}
+        </Text>
+        <Text style={[styles.author, { color: theme.colors.textSecondary }]}>
+          {item.author}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <FlatList
         data={books}
         keyExtractor={(item) => item.id}
@@ -49,14 +67,12 @@ const LibraryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     padding: 10,
   },
   bookContainer: {
     flexDirection: 'row',
     marginVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
     paddingBottom: 10,
   },
   coverImage: {
@@ -71,11 +87,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
   },
   author: {
     fontSize: 14,
-    color: '#888',
     marginTop: 5,
   },
 });
