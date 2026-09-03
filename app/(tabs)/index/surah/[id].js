@@ -39,11 +39,8 @@ import {
 import { useTajweed } from '@/contexts/TajweedContext';
 import TajweedText from '@/components/TajweedText';
 import ReadingPositionBar from '@/components/ReadingPositionBar';
-import MushafLine from '@/components/MushafLine';
-import {
-  getSurahLines,
-  findLineIndexForVerse,
-} from '@/utils/mushafLayout';
+import MushafWebView from '@/components/MushafWebView';
+import { getSurahLines } from '@/utils/mushafLayout';
 // Enable RTL for Arabic text
 I18nManager.allowRTL(true);
 
@@ -174,7 +171,6 @@ const SurahScreen = () => {
   const params = useLocalSearchParams();
   const router = useRouter();
   const listRef = useRef(null);
-  const inlineListRef = useRef(null);
   const surahNumber = Number.parseInt(params.id, 10);
   const hasBismillah =
     params.hasBismillah === 'true' || params.hasBismillah === true;
@@ -312,18 +308,9 @@ const SurahScreen = () => {
       if (index > -1) {
         listRef.current?.scrollToIndex({ index, animated: true });
       }
-      return;
     }
-
-    // Continuous mode scrolls to the mushaf line holding the verse
-    const lineIndex = findLineIndexForVerse(mushafLines, verseParam);
-    if (lineIndex > -1) {
-      inlineListRef.current?.scrollToIndex({
-        index: lineIndex,
-        animated: true,
-      });
-    }
-  }, [verseParam, verses, showTranslation, mushafLines]);
+    // Continuous mode scrolls itself - the page is handed `targetAyah`.
+  }, [verseParam, verses, showTranslation]);
 
   // Remember the verse on screen so switching layouts lands on it again
   // instead of jumping back to the top of a freshly mounted list.
@@ -332,15 +319,6 @@ const SurahScreen = () => {
 
   const handleViewableItemsChanged = useCallback(({ viewableItems }) => {
     const verseId = Number(viewableItems[0]?.item?.id);
-    if (Number.isFinite(verseId)) {
-      anchorVerseRef.current = verseId;
-      setAnchorVerse(verseId);
-    }
-  }, []);
-
-  const handleInlineViewableItemsChanged = useCallback(({ viewableItems }) => {
-    // Items here are mushaf lines, so the anchor is the line's first word.
-    const verseId = Number(viewableItems[0]?.item?.words?.[0]?.ayahId);
     if (Number.isFinite(verseId)) {
       anchorVerseRef.current = verseId;
       setAnchorVerse(verseId);
@@ -363,17 +341,8 @@ const SurahScreen = () => {
       if (index > -1) {
         listRef.current?.scrollToIndex({ index, animated: false });
       }
-      return;
     }
-
-    const lineIndex = findLineIndexForVerse(mushafLines, verseId);
-    if (lineIndex > -1) {
-      inlineListRef.current?.scrollToIndex({
-        index: lineIndex,
-        animated: false,
-      });
-    }
-  }, [showTranslation, verses, mushafLines]);
+  }, [showTranslation, verses]);
 
   useEffect(() => {
     setAnchorVerse(Number.isFinite(verseParam) ? verseParam : 1);
@@ -408,17 +377,6 @@ const SurahScreen = () => {
     listRef.current?.scrollToOffset({ offset, animated: true });
     setTimeout(() => {
       listRef.current?.scrollToIndex({ index: info.index, animated: true });
-    }, 80);
-  }, []);
-
-  const handleInlineScrollToIndexFailed = useCallback((info) => {
-    const offset = info.averageItemLength * info.index;
-    inlineListRef.current?.scrollToOffset({ offset, animated: true });
-    setTimeout(() => {
-      inlineListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: true,
-      });
     }, 80);
   }, []);
 
@@ -563,32 +521,25 @@ const SurahScreen = () => {
     [verses, handleVerseLongPress],
   );
 
-  // Render one mushaf line. Every line but the surah's last is spread to fill
-  // the column, the way the printed page justifies it; the last one is centred
-  // instead of flinging two words to opposite edges.
-  const renderMushafLine = useCallback(
-    ({ item, index }) => (
-      <MushafLine
-        words={item.words}
-        fontSize={fontSize}
-        lineHeight={lineHeight}
-        theme={theme}
-        bookmarkedVerseIds={bookmarkedVerseIds}
-        onVerseLongPress={handleLineVerseLongPress}
-        stretch={index < mushafLines.length - 1}
-      />
-    ),
-    [
-      fontSize,
-      lineHeight,
-      theme,
-      bookmarkedVerseIds,
-      handleLineVerseLongPress,
-      mushafLines.length,
-    ],
-  );
+  // The page reports the topmost visible line, which drives the juz/hizb/page
+  // bar the way onViewableItemsChanged used to.
+  const handleMushafVisibleChange = useCallback((position) => {
+    if (Number.isFinite(position?.ayah)) {
+      anchorVerseRef.current = position.ayah;
+      setAnchorVerse(position.ayah);
+    }
+  }, []);
 
-  const mushafKeyExtractor = useCallback((line) => line.key, []);
+  // Built once per surah so the document is not rebuilt (and scrolled back to
+  // the top) every render.
+  const mushafHeader = useMemo(
+    () => ({
+      nameArabic,
+      type,
+      showBismillah: verses.some((verse) => verse.id === 'bismillah'),
+    }),
+    [nameArabic, type, verses],
+  );
 
   // Loading and error views
   if (loading) {
@@ -767,74 +718,17 @@ const SurahScreen = () => {
             windowSize={10}
           />
         ) : surahNumber !== 1 ? (
-          <FlatList
-            ref={inlineListRef}
-            data={mushafLines}
-            renderItem={renderMushafLine}
-            keyExtractor={mushafKeyExtractor}
-            contentInsetAdjustmentBehavior='automatic'
-            contentContainerStyle={[
-              styles.flatlistContent,
-              { backgroundColor: theme.colors.background },
-            ]}
-            ListHeaderComponent={
-              <>
-                {/* Surah name and type header */}
-                <View style={styles.surahNameContainer}>
-                  <ImageBackground
-                    style={styles.surahNameBackground}
-                    resizeMode='cover'
-                    source={require('@/assets/surahName.jpeg')}
-                  >
-                    <Text
-                      style={[
-                        styles.verseText,
-                        styles.surahName,
-                        { color: theme.colors.surahName },
-                      ]}
-                    >
-                      سُورَةٌ {nameArabic}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.verseText,
-                        styles.surahType,
-                        { color: theme.colors.surahName },
-                      ]}
-                    >
-                      {type === 'meccan' ? 'مَكِّيَّاتٌ' : 'مَدَنِيَّاتٌ'}
-                    </Text>
-                  </ImageBackground>
-                </View>
-
-                {/* Render Bismillah as a block at the top */}
-                {verses.some((verse) => verse.id === 'bismillah') && (
-                  <View style={styles.bismillahContainer}>
-                    <Text
-                      style={[
-                        styles.bismillahText,
-                        { color: theme.colors.brand },
-                      ]}
-                    >
-                      {Platform.OS === 'ios'
-                        ? '\uFDFD'
-                        : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}
-                    </Text>
-                  </View>
-                )}
-              </>
-            }
-            onScrollToIndexFailed={handleInlineScrollToIndexFailed}
-            onViewableItemsChanged={handleInlineViewableItemsChanged}
-            viewabilityConfig={VIEWABILITY_CONFIG}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews={true}
-            // Rows are single mushaf lines now, not ten-verse blocks, so a
-            // couple of rows would leave the screen half empty on open.
-            maxToRenderPerBatch={12}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={20}
-            windowSize={10}
+          <MushafWebView
+            lines={mushafLines}
+            fontSize={fontSize}
+            lineHeight={lineHeight}
+            theme={theme}
+            bookmarkedVerseIds={bookmarkedVerseIds}
+            onVerseLongPress={handleLineVerseLongPress}
+            onVisibleChange={handleMushafVisibleChange}
+            targetAyah={Number.isFinite(verseParam) ? verseParam : undefined}
+            header={mushafHeader}
+            loadingLabel={t.loading}
           />
         ) : (
           <SafeAreaView
