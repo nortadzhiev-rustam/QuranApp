@@ -8,9 +8,11 @@ import {
   Text,
 } from 'react-native';
 import { useFonts } from 'expo-font';
+import { useTheme } from '@/contexts/ThemeContext';
 const { width, height } = Dimensions.get('window');
 
 const CustomSplashScreen = ({ onFinish }) => {
+  const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const textFadeAnim = useRef(new Animated.Value(0)).current;
@@ -62,7 +64,9 @@ const CustomSplashScreen = ({ onFinish }) => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <Animated.View
         style={[
           styles.logoContainer,
@@ -81,6 +85,7 @@ const CustomSplashScreen = ({ onFinish }) => {
           style={[
             styles.title,
             {
+              color: theme.colors.text,
               opacity: textFadeAnim,
             },
           ]}
@@ -91,6 +96,7 @@ const CustomSplashScreen = ({ onFinish }) => {
           style={[
             styles.subtitle,
             {
+              color: theme.colors.textSecondary,
               opacity: textFadeAnim,
             },
           ]}
@@ -105,7 +111,6 @@ const CustomSplashScreen = ({ onFinish }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -123,13 +128,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2c3e50',
     marginTop: 10,
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#7f8c8d',
     letterSpacing: 1,
   },
 });

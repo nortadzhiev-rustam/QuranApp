@@ -3,15 +3,14 @@ import { TabBarContext } from '@/contexts/TabBarContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useState } from 'react';
 import { Platform } from 'react-native';
-import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 export default function TabsLayout() {
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);
   const { t } = useLanguage();
   const { theme } = useTheme();
 
   return (
-    <ThemeProvider>
-      <TabBarContext value={{ setIsTabBarHidden }}>
+    <TabBarContext value={{ setIsTabBarHidden }}>
         <NativeTabs
           hidden={isTabBarHidden}
           minimizeBehavior={'onScrollDown'}
@@ -48,7 +47,6 @@ export default function TabsLayout() {
             </NativeTabs.Trigger>
           )}
         </NativeTabs>
-      </TabBarContext>
-    </ThemeProvider>
+    </TabBarContext>
   );
 }
