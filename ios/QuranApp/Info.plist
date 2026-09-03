@@ -28,7 +28,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>quranapp</string>
-				<string>com.edunovaasia.test</string>
+				<string>com.rustamnortadzhiev.quran</string>
 			</array>
 		</dict>
 		<dict>
