@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { Platform, Pressable, Text } from 'react-native';
+import { Platform, Pressable, Text, DynamicColorIOS } from 'react-native';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'expo-router';
@@ -16,7 +16,13 @@ export default function Layout() {
           headerShown: true,
           headerBackTitleVisible: false,
           headerTransparent: Platform.OS === 'ios',
-          headerTintColor: theme.colors.text,
+          headerTintColor:
+            Platform.OS === 'ios'
+              ? DynamicColorIOS({
+                  light: theme.colors.text,
+                  dark: theme.colors.surahName,
+                })
+              : theme.colors.text,
           headerLargeTitleEnabled: false,
           headerBackButtonDisplayMode: 'minimal',
           headerTitleAlign: 'center',
