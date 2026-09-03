@@ -435,7 +435,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.edunovaasia.test;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rustamnortadzhiev.quran;
 				PRODUCT_NAME = QuranApp;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "QuranApp/QuranApp-Bridging-Header.h";
@@ -471,7 +471,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.test.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rustamnortadzhiev.quran;
 				PRODUCT_NAME = QuranApp;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "QuranApp/QuranApp-Bridging-Header.h";

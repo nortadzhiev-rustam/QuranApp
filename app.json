@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "scheme": "quranapp",
     "ios": {
-      "bundleIdentifier": "com.edunovaasia.test",
+      "bundleIdentifier": "com.rustamnortadzhiev.quran",
       "supportsTablet": true,
       "icon": "./assets/AppIcon.icon",
       "appleTeamId": "28QUF89Z2V"
@@ -18,7 +18,7 @@
         "foregroundImage": "./assets/AppIcon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.edunovaasia.test"
+      "package": "com.rustamnortadzhiev.quran"
     },
     "web": {
       "favicon": "./assets/favicon.png"
